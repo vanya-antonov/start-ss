@@ -1,0 +1,8 @@
+# Python bytecode and cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django development database
+db.sqlite3
+db.sqlite3-journal
