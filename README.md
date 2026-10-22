@@ -10,7 +10,7 @@ conda env create -f environment.yml
 conda activate start-ss
 ```
 
-The environment uses Python 3.15 and Django 6.1.2. To apply later changes to
+The environment uses Python 3.14 and Django 6.1.2. To apply later changes to
 `environment.yml`, update the existing environment with:
 
 ```bash
