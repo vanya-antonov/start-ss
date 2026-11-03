@@ -1,0 +1,10 @@
+name: start-ss-scripts
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - pandas
+  - biopython
+  - requests
+  - viennarna

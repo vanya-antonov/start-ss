@@ -1,18 +1,44 @@
 # start-ss
 RNA secondary structures around the start codon.
 
-## Development environment
+## Environments
 
-Create the Conda environment from the project root:
+The Django project and bioinformatics scripts use separate Conda environments.
+Create and activate the Django environment from the repository root with:
 
 ```bash
-conda env create -f environment.yml
+conda env create -f django-env.yml
 conda activate start-ss
 ```
 
-The environment uses Python 3.14 and Django 6.1.2. To apply later changes to
-`environment.yml`, update the existing environment with:
+It uses Python 3.14 and Django 6.1.2. To apply changes to `django-env.yml`:
 
 ```bash
-conda env update -f environment.yml --prune
+conda env update -f django-env.yml --prune
+```
+
+Create and activate the shared scripts environment with:
+
+```bash
+conda env create -f scripts-env.yml
+conda activate start-ss-scripts
+```
+
+It uses Python 3.11 with pandas, Biopython, requests, and ViennaRNA. Update it
+after changing `scripts-env.yml` with:
+
+```bash
+conda env update -f scripts-env.yml --prune
+```
+
+## Download human MANE Select transcripts
+
+With `start-ss-scripts` active, run this from the repository root:
+
+```bash
+python scripts/human/01_download_mane.py
+```
+
+The script downloads the latest NCBI MANE summary and writes the filtered
+transcript table to `data/human/mane_select_transcripts.tsv`.
 ```
