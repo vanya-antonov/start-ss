@@ -279,18 +279,22 @@ def main() -> int:
             final_rows,
             ("gene_name", "transcript", "GC", "free_energy"),
         )
-        atomic_write_tsv(
-            ERRORS_TSV,
-            errors,
-            ("gene_name", "transcript", "error_type", "description"),
-        )
+        if errors:
+            atomic_write_tsv(
+                ERRORS_TSV,
+                errors,
+                ("gene_name", "transcript", "error_type", "description"),
+            )
+            LOG.info("Wrote error report to %s", ERRORS_TSV)
+        else:
+            ERRORS_TSV.unlink(missing_ok=True)
+            LOG.info("No folding errors; error report not created")
         validate_gabarap(successful, sequences_by_transcript)
         LOG.info("Total input transcripts: %d", total)
         LOG.info("Successfully folded: %d", len(successful))
         LOG.info("Failed transcripts: %d", len(errors))
         LOG.info("Wrote intermediate results to %s", INTERMEDIATE_TSV)
         LOG.info("Wrote final results to %s", FINAL_TSV)
-        LOG.info("Wrote error report to %s", ERRORS_TSV)
     except (OSError, ValueError, pd.errors.ParserError) as error:
         LOG.error("MFE calculation could not complete: %s", error)
         return 1

@@ -103,8 +103,8 @@ The outputs are:
 - `results/human/05_mane_start_codon_structure.tsv`: exactly `gene_name`,
   `transcript`, `GC` (rounded to one decimal), and `free_energy` (kcal/mol,
   rounded to two decimals).
-- `data/human/05_rnafold_errors.tsv`: transcript, gene name, error type, and
-  description for sequences that could not be folded.
+- `data/human/05_rnafold_errors.tsv` (created only if errors occur): transcript,
+  gene name, error type, and description for sequences that could not be folded.
 
 The environment pins ViennaRNA 2.7.2 (`viennarna=2.7.2`). The script logs the
 Python binding version and uses `RNA.fold()` with default RNAfold settings:
