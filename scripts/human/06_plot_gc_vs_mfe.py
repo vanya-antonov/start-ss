@@ -16,7 +16,7 @@ try:
     import matplotlib.pyplot as plt
 except ImportError as error:
     raise ImportError(
-        "This script requires matplotlib, which is not currently listed in scripts-env.yml."
+        "matplotlib is required; update the start-ss-scripts environment from scripts-env.yml."
     ) from error
 
 
