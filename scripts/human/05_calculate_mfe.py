@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import csv
+import argparse
 import logging
 import math
+import multiprocessing
 import os
 import tempfile
 from pathlib import Path
@@ -88,6 +90,56 @@ def fold_sequence(sequence_dna: str) -> tuple[str, float]:
     return structure, float(mfe)
 
 
+def process_transcript(task: tuple[str, str, str, str | None, str | None]) -> tuple[bool, dict[str, str]]:
+    """Fold one transcript; kept at module scope for multiprocessing workers."""
+    gene_name, transcript, gc_value, sequence_dna, input_error = task
+    if input_error:
+        error_type, description = input_error.split("\t", maxsplit=1)
+        return False, {
+            "gene_name": gene_name,
+            "transcript": transcript,
+            "error_type": error_type,
+            "description": description,
+        }
+    try:
+        structure, mfe = fold_sequence(sequence_dna or "")
+        gc = float(gc_value)
+        if not math.isfinite(gc) or not 0.0 <= gc <= 100.0:
+            raise ValueError(f"Invalid GC percentage: {gc_value!r}")
+        return True, {
+            "gene_name": gene_name,
+            "transcript": transcript,
+            "structure": structure,
+            "MFE": f"{mfe:.2f}",
+            "_GC": f"{gc:.1f}",
+            "_raw_MFE": str(mfe),
+        }
+    except Exception as error:
+        return False, {
+            "gene_name": gene_name,
+            "transcript": transcript,
+            "error_type": type(error).__name__,
+            "description": str(error),
+        }
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse CLI options."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--num_cpu",
+        "--num-cpu",
+        dest="num_cpu",
+        type=int,
+        default=1,
+        help="Number of worker processes (default: 1; values above 1 enable multiprocessing)",
+    )
+    args = parser.parse_args()
+    if args.num_cpu < 1:
+        parser.error("--num_cpu must be at least 1")
+    return args
+
+
 def atomic_write_tsv(path: Path, rows: list[dict[str, str]], columns: tuple[str, ...]) -> None:
     """Write a TSV atomically with a fixed column order."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,9 +190,11 @@ def validate_gabarap(
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
+    args = parse_args()
     version = getattr(RNA, "__version__", None) or getattr(RNA, "VERSION", "unknown")
     LOG.info("ViennaRNA Python API version: %s", version)
     LOG.info("Folding parameters: RNA.fold defaults; no constraints or custom model settings")
+    LOG.info("Worker processes: %d", args.num_cpu)
 
     try:
         frame, fasta_sequences = load_input(INPUT_TSV, INPUT_FASTA)
@@ -149,39 +203,57 @@ def main() -> int:
         sequences_by_transcript: dict[str, str] = {}
         total = len(frame)
 
-        for index, (_, row) in enumerate(frame.iterrows(), start=1):
+        tasks = []
+        for _, row in frame.iterrows():
             transcript = row["transcript"].strip()
             gene_name = row["gene_name"].strip()
             try:
                 sequence_dna = sequence_for_row(row, fasta_sequences)
                 sequences_by_transcript[transcript] = sequence_dna
-                structure, mfe = fold_sequence(sequence_dna)
-                gc = float(row["GC"])
-                if not math.isfinite(gc) or not 0.0 <= gc <= 100.0:
-                    raise ValueError(f"Invalid GC percentage: {row['GC']!r}")
-                successful.append(
-                    {
-                        "gene_name": gene_name,
-                        "transcript": transcript,
-                        "structure": structure,
-                        "MFE": f"{mfe:.2f}",
-                    }
-                )
-                successful[-1]["_GC"] = f"{gc:.1f}"
-                successful[-1]["_raw_MFE"] = str(mfe)
+                tasks.append((gene_name, transcript, row["GC"], sequence_dna, None))
             except Exception as error:
-                errors.append(
-                    {
-                        "gene_name": gene_name,
-                        "transcript": transcript,
-                        "error_type": type(error).__name__,
-                        "description": str(error),
-                    }
+                tasks.append(
+                    (
+                        gene_name,
+                        transcript,
+                        row["GC"],
+                        None,
+                        f"{type(error).__name__}\t{error}",
+                    )
                 )
-                LOG.error("Failed %s (%s): %s", transcript, type(error).__name__, error)
 
-            if index % PROGRESS_INTERVAL == 0 or index == total:
-                LOG.info("Processed %d/%d transcripts; %d successes, %d errors", index, total, len(successful), len(errors))
+        if args.num_cpu == 1:
+            results = map(process_transcript, tasks)
+            pool_context = None
+        else:
+            pool_context = multiprocessing.Pool(processes=args.num_cpu)
+            chunk_size = max(1, min(50, len(tasks) // (args.num_cpu * 4) or 1))
+            results = pool_context.imap(process_transcript, tasks, chunksize=chunk_size)
+
+        try:
+            for index, (is_success, result) in enumerate(results, start=1):
+                if is_success:
+                    successful.append(result)
+                else:
+                    errors.append(result)
+                    LOG.error(
+                        "Failed %s (%s): %s",
+                        result["transcript"],
+                        result["error_type"],
+                        result["description"],
+                    )
+                if index % PROGRESS_INTERVAL == 0 or index == total:
+                    LOG.info(
+                        "Processed %d/%d transcripts; %d successes, %d errors",
+                        index,
+                        total,
+                        len(successful),
+                        len(errors),
+                    )
+        finally:
+            if pool_context is not None:
+                pool_context.close()
+                pool_context.join()
 
         # Keep the public result tables limited to their specified metadata columns.
         intermediate_rows = [

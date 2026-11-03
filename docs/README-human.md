@@ -83,6 +83,13 @@ With the `start-ss-scripts` environment active, run from the repository root:
 python scripts/human/05_calculate_mfe.py
 ```
 
+The default is one worker process. To enable multiprocessing, set the worker
+count with `--num_cpu`; for example:
+
+```bash
+python scripts/human/05_calculate_mfe.py --num_cpu 4
+```
+
 The script reads metadata from `data/human/03_start_codon_windows.tsv` and
 sequences from `data/human/03_start_codon_windows.fasta`. If an input TSV has a
 `sequence` column, it uses that; otherwise it joins sequences by transcript ID
