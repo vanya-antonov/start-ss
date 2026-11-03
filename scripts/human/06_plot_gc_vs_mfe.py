@@ -97,6 +97,17 @@ def plot_data(frame: pd.DataFrame, output_path: Path) -> None:
     ax.set_xlabel("GC content (%)")
     ax.set_ylabel("Predicted RNA structure strength, −MFE (kcal/mol)")
     ax.set_title("GC Content versus Predicted RNA Structure Strength\nHuman MANE Select Transcripts")
+    ax.text(
+        0.02,
+        0.98,
+        f"n = {len(frame):,} transcripts",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=10,
+        color="#3F4A56",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.8, "pad": 3},
+    )
     ax.grid(True, color="#D9DEE5", linewidth=0.7, alpha=0.8)
     ax.set_axisbelow(True)
     ax.spines["top"].set_visible(False)
