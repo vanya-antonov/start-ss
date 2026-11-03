@@ -27,3 +27,18 @@ The script reads `data/human/01_mane_select_transcripts.tsv`, downloads versione
 RefSeq records in batches, and writes successful records to
 `data/human/02_mane_transcripts.gb.gz`. Failed or missing accessions are listed in
 `data/human/genbank_download_failures.tsv`.
+
+## Step 3. Extract sequences around translation start codons
+
+With `start-ss-scripts` active, run:
+
+```bash
+python scripts/human/03_extract_sequences.py
+```
+
+The script reads `data/human/02_mane_transcripts.gb.gz` and extracts validated
+50-nt transcript-oriented windows (23 nt upstream, the annotated ATG, and 24 nt
+downstream). Successful windows are written to
+`data/human/03_start_codon_windows.fasta` and
+`data/human/03_start_codon_windows.tsv`. Transcripts that cannot be processed
+are listed in `data/human/03_extraction_errors.tsv`.
