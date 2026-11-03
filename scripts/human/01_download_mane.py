@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 
 FTP_ROOT = "https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/"
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "human"
-OUTPUT_FILE = DATA_DIR / "mane_select_transcripts.tsv"
+OUTPUT_FILE = DATA_DIR / "01_mane_select_transcripts.tsv"
 OUTPUT_COLUMNS = (
     "symbol",
     "NCBI_GeneID",

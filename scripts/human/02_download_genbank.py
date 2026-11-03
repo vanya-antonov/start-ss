@@ -20,8 +20,8 @@ from Bio.SeqRecord import SeqRecord
 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "human"
-INPUT_FILE = DATA_DIR / "mane_select_transcripts.tsv"
-OUTPUT_FILE = DATA_DIR / "mane_transcripts.gb.gz"
+INPUT_FILE = DATA_DIR / "01_mane_select_transcripts.tsv"
+OUTPUT_FILE = DATA_DIR / "02_mane_transcripts.gb.gz"
 FAILURES_FILE = DATA_DIR / "genbank_download_failures.tsv"
 EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 BATCH_SIZE = 150

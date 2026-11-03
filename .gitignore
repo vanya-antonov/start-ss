@@ -8,4 +8,4 @@ db.sqlite3
 db.sqlite3-journal
 
 # Downloaded human transcript records
-data/human/mane_transcripts.gb.gz
+data/human/02_mane_transcripts.gb.gz

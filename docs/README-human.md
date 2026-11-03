@@ -10,7 +10,7 @@ python scripts/human/01_download_mane.py
 ```
 
 The script downloads the latest NCBI MANE summary and writes the filtered
-transcript table to `data/human/mane_select_transcripts.tsv`.
+transcript table to `data/human/01_mane_select_transcripts.tsv`.
 
 ## Step 2. Download MANE transcript GenBank records
 
@@ -23,7 +23,7 @@ export NCBI_EMAIL="you@example.org"
 python scripts/human/02_download_genbank.py
 ```
 
-The script reads `data/human/mane_select_transcripts.tsv`, downloads versioned
+The script reads `data/human/01_mane_select_transcripts.tsv`, downloads versioned
 RefSeq records in batches, and writes successful records to
-`data/human/mane_transcripts.gb`. Failed or missing accessions are listed in
+`data/human/02_mane_transcripts.gb.gz`. Failed or missing accessions are listed in
 `data/human/genbank_download_failures.tsv`.
