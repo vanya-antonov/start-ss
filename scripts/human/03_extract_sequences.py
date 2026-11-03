@@ -242,7 +242,11 @@ def main() -> int:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         successes, errors, total_records = process_records(INPUT_FILE)
         atomic_write(FASTA_FILE, lambda handle: write_fasta(successes, handle))
-        write_tsv(RESULTS_FILE, successes, ("gene_name", "transcript", "sequence", "GC"))
+        tsv_rows = [
+            {key: row[key] for key in ("gene_name", "transcript", "GC")}
+            for row in successes
+        ]
+        write_tsv(RESULTS_FILE, tsv_rows, ("gene_name", "transcript", "GC"))
         write_tsv(
             ERRORS_FILE,
             errors,
