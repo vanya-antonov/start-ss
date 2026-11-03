@@ -7,28 +7,28 @@ The Django project and bioinformatics scripts use separate Conda environments.
 Create and activate the Django environment from the repository root with:
 
 ```bash
-conda env create -f django-env.yml
-conda activate start-ss
+mamba env create -f django-env.yml
+mamba activate start-ss
 ```
 
 It uses Python 3.14 and Django 6.1.2. To apply changes to `django-env.yml`:
 
 ```bash
-conda env update -f django-env.yml --prune
+mamba env update -f django-env.yml --prune
 ```
 
 Create and activate the shared scripts environment with:
 
 ```bash
-conda env create -f scripts-env.yml
-conda activate start-ss-scripts
+mamba env create -f scripts-env.yml
+mamba activate start-ss-scripts
 ```
 
 It uses Python 3.11 with pandas, Biopython, requests, and ViennaRNA. Update it
 after changing `scripts-env.yml` with:
 
 ```bash
-conda env update -f scripts-env.yml --prune
+mamba env update -f scripts-env.yml --prune
 ```
 
 ## Download human MANE Select transcripts
