@@ -75,8 +75,55 @@ else:
 PY
 ```
 
-The equivalent command-line check is:
+## Step 5. Calculate RNA secondary structure and MFE
+
+With the `start-ss-scripts` environment active, run from the repository root:
 
 ```bash
-printf '%s\n' 'UGUCCAGCCCGGUUCCCGGGAGGAUGAAGUUCGUGUACAAAGAAGAGCAU' | RNAfold
+python scripts/human/05_calculate_mfe.py
 ```
+
+The script reads metadata from `data/human/03_start_codon_windows.tsv` and
+sequences from `data/human/03_start_codon_windows.fasta`. If an input TSV has a
+`sequence` column, it uses that; otherwise it joins sequences by transcript ID
+from the FASTA. This keeps nucleotide sequences out of TSV files intended for
+GitHub.
+
+The outputs are:
+
+- `data/human/05_rnafold_results.tsv`: `gene_name`, `transcript`, `structure`,
+  and `MFE` (kcal/mol, rounded to two decimals).
+- `results/human/05_mane_start_codon_structure.tsv`: exactly `gene_name`,
+  `transcript`, `GC` (rounded to one decimal), and `free_energy` (kcal/mol,
+  rounded to two decimals).
+- `data/human/05_rnafold_errors.tsv`: transcript, gene name, error type, and
+  description for sequences that could not be folded.
+
+The environment pins ViennaRNA 2.7.2 (`viennarna=2.7.2`). The script logs the
+Python binding version and uses `RNA.fold()` with default RNAfold settings:
+RNA input, default temperature and model details, and no constraints or custom
+parameters. It does not change settings to force the reference result.
+
+### Independently validate GABARAP
+
+The reference transcript is `NM_007278.2`; its 50-nt DNA window has expected GC
+content 54% and expected MFE `-14.80 kcal/mol`. The following independent API
+check converts T to U, verifies the sequence length, and compares the MFE with a
+0.01 kcal/mol tolerance:
+
+```bash
+python - <<'PY'
+import RNA
+
+sequence_dna = "TGTCCAGCCCGGTTCCCGGGAGGATGAAGTTCGTGTACAAAGAAGAGCAT"
+assert len(sequence_dna) == 50
+sequence_rna = sequence_dna.replace("T", "U")
+structure, mfe = RNA.fold(sequence_rna)
+expected_mfe = -14.80
+tolerance = 0.01
+print(f"Structure: {structure}")
+print(f"MFE: {mfe:.2f} kcal/mol")
+print(f"Matches expected MFE: {abs(mfe - expected_mfe) <= tolerance}")
+PY
+```
+
