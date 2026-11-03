@@ -31,14 +31,8 @@ after changing `scripts-env.yml` with:
 mamba env update -f scripts-env.yml --prune
 ```
 
-## Download human MANE Select transcripts
+## Human transcript workflow
 
-With `start-ss-scripts` active, run this from the repository root:
-
-```bash
-python scripts/human/01_download_mane.py
-```
-
-The script downloads the latest NCBI MANE summary and writes the filtered
-transcript table to `data/human/mane_select_transcripts.tsv`.
+See [the human transcript guide](docs/README-human.md) for instructions to
+download MANE Select transcripts and their GenBank records.
 ```

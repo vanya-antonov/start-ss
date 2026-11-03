@@ -4,7 +4,7 @@ channels:
   - bioconda
 dependencies:
   - python=3.11
-  - pandas
-  - biopython
-  - requests
-  - viennarna
+  - pandas=3.0.5
+  - biopython=1.88
+  - requests=2.34.2
+  - viennarna=2.7.2
