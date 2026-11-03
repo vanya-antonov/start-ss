@@ -42,3 +42,56 @@ downstream). Successful windows are written to
 `data/human/03_start_codon_windows.fasta` and
 `data/human/03_start_codon_windows.tsv`. Transcripts that cannot be processed
 are listed in `data/human/03_extraction_errors.tsv`.
+
+## Step 4. Scripts environment and ViennaRNA
+
+The shared `scripts-env.yml` environment includes Python 3.11, pandas,
+Biopython, requests, and ViennaRNA. Create and activate it with:
+
+```bash
+conda env create -f scripts-env.yml
+conda activate start-ss-scripts
+```
+
+To update an existing environment after changing the file:
+
+```bash
+conda env update -f scripts-env.yml --prune
+```
+
+Check the ViennaRNA command-line installation:
+
+```bash
+RNAfold --version
+```
+
+### Validate the GABARAP MFE calculation
+
+Convert the reference DNA sequence to RNA by replacing `T` with `U`. The
+expected minimum free energy (MFE) is `-14.80 kcal/mol`. With the environment
+active, run this Python API check:
+
+```bash
+python - <<'PY'
+import RNA
+
+sequence_dna = "TGTCCAGCCCGGTTCCCGGGAGGATGAAGTTCGTGTACAAAGAAGAGCAT"
+sequence_rna = sequence_dna.replace("T", "U")
+expected_mfe = -14.80
+tolerance = 0.01
+
+structure, mfe = RNA.fold(sequence_rna)
+print(f"Structure: {structure}")
+print(f"Minimum free energy: {mfe:.2f} kcal/mol")
+if abs(mfe - expected_mfe) <= tolerance:
+    print(f"MFE matches expected value ({expected_mfe:.2f} kcal/mol).")
+else:
+    print(f"MFE does not match expected value ({expected_mfe:.2f} kcal/mol).")
+PY
+```
+
+The equivalent command-line check is:
+
+```bash
+printf '%s\n' 'UGUCCAGCCCGGUUCCCGGGAGGAUGAAGUUCGUGUACAAAGAAGAGCAU' | RNAfold
+```
