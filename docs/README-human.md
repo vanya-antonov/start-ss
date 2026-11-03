@@ -43,22 +43,7 @@ downstream). Successful windows are written to
 `data/human/03_start_codon_windows.tsv`. Transcripts that cannot be processed
 are listed in `data/human/03_extraction_errors.tsv`.
 
-## Step 4. Scripts environment and ViennaRNA
-
-The shared `scripts-env.yml` environment includes Python 3.11, pandas,
-Biopython, requests, and ViennaRNA. Create and activate it with:
-
-```bash
-conda env create -f scripts-env.yml
-conda activate start-ss-scripts
-```
-
-To update an existing environment after changing the file:
-
-```bash
-conda env update -f scripts-env.yml --prune
-```
-
+## Step 4. ViennaRNA Validation
 Check the ViennaRNA command-line installation:
 
 ```bash
