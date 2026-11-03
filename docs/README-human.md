@@ -134,3 +134,23 @@ print(f"Matches expected MFE: {abs(mfe - expected_mfe) <= tolerance}")
 PY
 ```
 
+## Step 6. Plot GC content versus RNA structure strength
+
+With the `start-ss-scripts` environment active, run from the repository root:
+
+```bash
+python scripts/human/06_plot_gc_vs_mfe.py
+```
+
+The script reads `results/human/05_mane_start_codon_structure.tsv` and saves a
+300-DPI plot to `results/human/06_gc_vs_mfe.png`. The x-axis shows GC content
+(%), and the y-axis shows `-free_energy` (kcal/mol), so higher values indicate
+more negative MFE predictions and stronger predicted structures. Each point is
+one transcript; GABARAP is highlighted in red. Rows with missing or non-numeric
+GC or free-energy values are skipped and counted in the console output, which
+also reports the plotted transcript count and GABARAP coordinates.
+
+The script requires pandas and matplotlib. `scripts-env.yml` already includes
+pandas, but does not currently declare matplotlib; make sure matplotlib is
+available in the active environment before running Step 6.
+
