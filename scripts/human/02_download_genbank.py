@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import logging
 import os
 import re
@@ -20,7 +21,7 @@ from Bio.SeqRecord import SeqRecord
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "human"
 INPUT_FILE = DATA_DIR / "mane_select_transcripts.tsv"
-OUTPUT_FILE = DATA_DIR / "mane_transcripts.gb"
+OUTPUT_FILE = DATA_DIR / "mane_transcripts.gb.gz"
 FAILURES_FILE = DATA_DIR / "genbank_download_failures.tsv"
 EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 BATCH_SIZE = 150
@@ -184,16 +185,17 @@ def validate_genbank(path: Path, expected: set[str]) -> tuple[int, int]:
     seen: set[str] = set()
     cds_records = 0
     count = 0
-    for record in SeqIO.parse(path, "genbank"):
-        accession = accession_of(record)
-        if accession not in expected:
-            raise RuntimeError(f"Unexpected accession/version in output: {accession}")
-        if accession in seen:
-            raise RuntimeError(f"Duplicate accession/version in output: {accession}")
-        seen.add(accession)
-        count += 1
-        if any(feature.type == "CDS" for feature in record.features):
-            cds_records += 1
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        for record in SeqIO.parse(handle, "genbank"):
+            accession = accession_of(record)
+            if accession not in expected:
+                raise RuntimeError(f"Unexpected accession/version in output: {accession}")
+            if accession in seen:
+                raise RuntimeError(f"Duplicate accession/version in output: {accession}")
+            seen.add(accession)
+            count += 1
+            if any(feature.type == "CDS" for feature in record.features):
+                cds_records += 1
     LOG.info("Validated accession.version for all %d records", count)
     LOG.info("Unique GenBank records: %d", len(seen))
     LOG.info("Records with an annotated CDS feature: %d", cds_records)
@@ -201,7 +203,12 @@ def validate_genbank(path: Path, expected: set[str]) -> tuple[int, int]:
 
 
 def write_failures(path: Path, failures: dict[str, str]) -> None:
-    """Write missing/failed accessions atomically as a tab-delimited report."""
+    """Write a failure report only when failures exist; remove stale reports."""
+    if not failures:
+        path.unlink(missing_ok=True)
+        LOG.info("No failed or missing accessions; failure report not created")
+        return
+
     with tempfile.NamedTemporaryFile(
         mode="w", encoding="utf-8", newline="", dir=path.parent, delete=False
     ) as temporary:
@@ -222,13 +229,17 @@ def download_all(accessions: list[str]) -> None:
     if params.get("api_key"):
         LOG.info("Using NCBI API key from NCBI_API_KEY")
 
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", newline="", dir=DATA_DIR, delete=False
-    ) as temporary:
-        staged_output = Path(temporary.name)
-        downloaded, failures = save_records(accessions, temporary, params)
-        temporary.flush()
-        os.fsync(temporary.fileno())
+    with tempfile.NamedTemporaryFile(dir=DATA_DIR, delete=False) as temporary_file:
+        staged_output = Path(temporary_file.name)
+
+    try:
+        with gzip.open(staged_output, "wt", encoding="utf-8", newline="") as temporary:
+            downloaded, failures = save_records(accessions, temporary, params)
+        with staged_output.open("rb") as temporary_file:
+            os.fsync(temporary_file.fileno())
+    except Exception:
+        staged_output.unlink(missing_ok=True)
+        raise
 
     try:
         count, _ = validate_genbank(staged_output, set(accessions))
@@ -246,7 +257,8 @@ def download_all(accessions: list[str]) -> None:
     write_failures(FAILURES_FILE, failures)
     LOG.info("Successfully downloaded records: %d/%d", count, len(accessions))
     LOG.info("Wrote GenBank records to %s", OUTPUT_FILE)
-    LOG.info("Wrote failure report (%d accessions) to %s", len(failures), FAILURES_FILE)
+    if failures:
+        LOG.info("Wrote failure report (%d accessions) to %s", len(failures), FAILURES_FILE)
 
 
 def main() -> int:
