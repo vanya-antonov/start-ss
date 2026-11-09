@@ -65,8 +65,7 @@ Pass a gzipped Ensembl GTF file to the parser. For example, process the human
 annotation from Step 1 with:
 
 ```bash
-python scripts/mammals/01_get_canonical_transcripts_from_gtf.py \
-  --gtf data/mammals/Homo_sapiens.GRCh38.116.gtf.gz
+time python scripts/mammals/01_get_canonical_transcripts_from_gtf.py --gtf data/mammals/Homo_sapiens.GRCh38.116.gtf.gz
 ```
 
 The script reads transcript, exon, and CDS features in two streaming passes,
@@ -89,7 +88,7 @@ informative error rather than an incomplete output.
 
 The output filename is based on the input GTF prefix (the text before the
 first dot). For example, `Homo_sapiens.GRCh38.116.gtf.gz` produces
-`data/mammals/Homo_sapiens.canonical_transcripts.tsv`. Each run writes a
+`data/mammals/01_Homo_sapiens.canonical_transcripts.tsv`. Each run writes a
 separate file for its input species. Canonical transcripts without a gene
 name, and transcripts with missing or inconsistent exon/CDS data, are omitted
 from the TSV and listed in `data/mammals/01_<gtf_prefix>.errors.txt` with their

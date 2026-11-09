@@ -366,7 +366,7 @@ def gtf_prefix(gtf_path):
 
 def output_path_for_gtf(gtf_path):
     """Build the TSV path with the species prefix before the output label."""
-    return OUTPUT_DIR / f"{gtf_prefix(gtf_path)}.canonical_transcripts.tsv"
+    return OUTPUT_DIR / f"01_{gtf_prefix(gtf_path)}.canonical_transcripts.tsv"
 
 
 def errors_path_for_gtf(gtf_path):
