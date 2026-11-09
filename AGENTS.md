@@ -30,6 +30,22 @@ local structure and initiation, and associations with translation efficiency.
 - Do not commit raw or restricted datasets, credentials, or machine-specific
   paths. Record data source, release/version, and access terms.
 
+## Execution policy
+
+- Never execute scripts, Python files, shell commands, or other project
+  commands unless the current prompt explicitly asks you to do so.
+- This prohibition includes running tests, linters, formatters, installation
+  commands, build commands, and pipeline scripts.
+- Do not download data, trigger network requests, or run commands that modify
+  the environment unless explicitly requested.
+- By default, limit work to inspecting files, editing code, and performing
+  static analysis.
+- If execution would be useful for validation, describe the proposed command
+  but do not run it.
+- An explicit request to execute something must come from the current prompt;
+  do not infer permission from previous prompts or general project
+  instructions.
+
 ## Reproducible analysis
 
 - Make inputs, outputs, parameters, and random seeds explicit; preserve scripts
