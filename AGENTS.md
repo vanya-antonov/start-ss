@@ -7,21 +7,26 @@ of or around translation start codons (AUG) influences translation initiation in
 mammalian transcripts, especially human genes. Questions include conservation,
 local structure and initiation, and associations with translation efficiency.
 
-## Repository today
+## Repository structure
 
-- `README.md`: project title and Conda setup instructions.
-- `environment.yml`: Python 3.14 and Django 6.1.2.
-- `django/`: generated Django project scaffold (`manage.py`, settings, URLs,
-  ASGI/WSGI); only the admin URL is configured.
-- No analysis pipeline, application-specific code, notebooks, datasets, or
-  tests are present yet. Do not assume these have been implemented.
+- Human and mammalian analyses are separate pipelines.
+- The existing human scripts, data, and results remain under
+  `scripts/human/`, `data/human/`, and `results/human/`.
+- Planned mammalian scripts and data belong under `scripts/mammals/` and
+  `data/mammals/`. Mammalian results may later be stored under
+  `results/mammals/`.
+- Research documentation is organized by dated folders under `docs/2026/`.
+- No shared `constants.py` or mammalian scripts exist yet. Do not assume the
+  planned mammalian workflow has been implemented.
+- `django/` is a generated Django project scaffold; keep research analysis
+  separate from Django configuration and interfaces.
 
 ## Development practices
 
 - Keep Python readable and modular; use clear names, small functions, and
   comments for non-obvious scientific choices. Follow existing project style.
-- Keep research analysis separate from Django configuration and interfaces.
-  Add dependencies to `environment.yml` only when needed and document why.
+- Add dependencies to the relevant environment file only when needed and
+  document why.
 - Do not commit raw or restricted datasets, credentials, or machine-specific
   paths. Record data source, release/version, and access terms.
 

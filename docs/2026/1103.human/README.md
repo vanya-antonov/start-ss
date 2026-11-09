@@ -1,6 +1,6 @@
 # Human transcript workflow
 
-Use the `start-ss-scripts` environment described in the [project README](../README.md).
+Use the `start-ss-scripts` environment described in the [project README](../../../README.md).
 Run the following commands from the repository root.
 
 ## Step 1. Download human MANE Select transcripts

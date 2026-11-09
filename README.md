@@ -33,6 +33,10 @@ mamba env update -f scripts-env.yml --prune
 
 ## Human transcript workflow
 
-See [the human transcript guide](docs/README-human.md) for instructions to
+See [the human transcript guide](docs/2026/1103.human/README.md) for instructions to
 download MANE Select transcripts and their GenBank records.
+
+The [planned mammalian analysis](docs/2026/1109.mammals/README.md) describes the
+proposed cross-species workflow. Mammalian scripts and data have not been
+implemented yet.
 ```
