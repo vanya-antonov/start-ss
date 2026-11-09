@@ -24,6 +24,7 @@ OUTPUT_COLUMNS = [
     "cds_end",
     "cds_length",
 ]
+PROGRESS_INTERVAL = 1_000_000
 
 
 class GTFFormatError(ValueError):
@@ -103,12 +104,16 @@ def first_attribute(attributes, key, default=""):
     return values[0] if values else default
 
 
-def iter_gtf_records(gtf_path):
+def iter_gtf_records(gtf_path, pass_name, canonical_count):
     """Yield relevant GTF records without loading the annotation into memory."""
     try:
         with gzip.open(gtf_path, "rt", encoding="utf-8") as gtf_file:
+            print(f"{pass_name}: scanning {gtf_path}", flush=True)
+            line_number = 0
             for line_number, line in enumerate(gtf_file, start=1):
                 if not line.strip() or line.startswith("#"):
+                    if line_number % PROGRESS_INTERVAL == 0:
+                        print_progress(pass_name, line_number, canonical_count())
                     continue
                 fields = line.rstrip("\r\n").split("\t")
                 if len(fields) != 9:
@@ -118,6 +123,8 @@ def iter_gtf_records(gtf_path):
                     )
                 feature = fields[2]
                 if feature not in {"gene", "transcript", "exon", "CDS"}:
+                    if line_number % PROGRESS_INTERVAL == 0:
+                        print_progress(pass_name, line_number, canonical_count())
                     continue
                 try:
                     start, end = int(fields[3]), int(fields[4])
@@ -140,15 +147,27 @@ def iter_gtf_records(gtf_path):
                     attributes=attributes,
                     line_number=line_number,
                 )
+                if line_number % PROGRESS_INTERVAL == 0:
+                    print_progress(pass_name, line_number, canonical_count())
+            if line_number % PROGRESS_INTERVAL != 0:
+                print_progress(pass_name, line_number, canonical_count())
     except (OSError, EOFError) as error:
         raise GTFFormatError(f"Could not read gzipped GTF {gtf_path}: {error}") from error
+
+
+def print_progress(pass_name, line_count, canonical_count):
+    print(
+        f"{pass_name}: processed {line_count:,} GTF lines; "
+        f"{canonical_count:,} canonical transcripts found",
+        flush=True,
+    )
 
 
 def get_transcript_metadata(gtf_path):
     """Collect gene annotations and canonical transcript rows in a first pass."""
     genes = {}
     canonical = {}
-    for record in iter_gtf_records(gtf_path):
+    for record in iter_gtf_records(gtf_path, "Pass 1/2", lambda: len(canonical)):
         attributes = record.attributes
         if record.feature == "gene":
             gene_id = first_attribute(attributes, "gene_id")
@@ -195,6 +214,10 @@ def get_transcript_metadata(gtf_path):
         metadata["gene_biotype"] = gene_biotype
         metadata["gene_name"] = metadata["gene_name"] or gene_metadata.get("gene_name", "")
         selected[transcript_id] = metadata
+    print(
+        f"Pass 1/2 complete: {len(selected):,} canonical protein-coding transcripts selected",
+        flush=True,
+    )
     return selected
 
 
@@ -202,7 +225,7 @@ def collect_transcript_segments(gtf_path, selected_transcripts):
     """Collect exon and CDS intervals for selected transcripts in a second pass."""
     exons = defaultdict(list)
     cds_segments = defaultdict(list)
-    for record in iter_gtf_records(gtf_path):
+    for record in iter_gtf_records(gtf_path, "Pass 2/2", lambda: len(selected_transcripts)):
         if record.feature not in {"exon", "CDS"}:
             continue
         transcript_id = first_attribute(record.attributes, "transcript_id")
@@ -220,6 +243,11 @@ def collect_transcript_segments(gtf_path, selected_transcripts):
             protein_id = first_attribute(record.attributes, "protein_id")
             if protein_id and not selected_transcripts[transcript_id]["protein_id"]:
                 selected_transcripts[transcript_id]["protein_id"] = protein_id
+    print(
+        f"Pass 2/2 complete: scanned exon/CDS data for "
+        f"{len(selected_transcripts):,} canonical transcripts",
+        flush=True,
+    )
     return exons, cds_segments
 
 
