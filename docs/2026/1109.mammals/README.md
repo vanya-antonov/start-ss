@@ -27,16 +27,12 @@ The species are listed in analysis order. Assemblies are UCSC assembly names.
 
 ### Download canonical transcript annotations
 
-The workflow uses the Ensembl REST API at `/info/species` to match each
-configured common and scientific name to an Ensembl production name, and
-`/info/data` to determine the current release. Download the matching GTF
-annotation manually before running the script. The script checks for that file
-under `data/mammals/`, parses it in streaming mode, and never downloads,
-deletes, or modifies the GTF. UCSC assembly IDs are not treated as Ensembl
-production names. Only transcripts tagged `Ensembl_canonical` with both gene
-and transcript biotypes `protein_coding` are included. CDS length is the sum
-of the transcript's CDS feature lengths. Genome FASTA and GenBank files are not
-downloaded.
+Download the Ensembl GTF annotation manually before running the parser. The
+commands below use the Ensembl 116 `current` FTP paths and corresponding
+release 116 GTF filenames. The parser only reads the supplied file; it does
+not download, delete, or modify the GTF. It selects transcripts tagged
+`Ensembl_canonical` from protein-coding genes. Genome FASTA and GenBank files
+are not needed for this step.
 
 ### Step 1. Download the Ensembl GTF file
 
@@ -63,27 +59,33 @@ it. The release 116 GTF directory does not contain files for killer whale,
 manatee, or aardvark, so those three species cannot be downloaded from these
 Ensembl paths. The downloaded `*.gtf.gz` files are ignored by Git.
 
-### Step 2. Parse canonical transcript annotations
+### Step 2. Extract canonical transcripts and CDS coordinates
 
-Pass a species ID from `SPECIES_ORDER` to process one species, or pass
-`__ALL__` after all required species GTF files are available locally. Run from
-the repository root or another working directory with the `start-ss-scripts`
-environment active:
+Pass a gzipped Ensembl GTF file to the parser. For example, process the human
+annotation from Step 1 with:
 
 ```bash
-python scripts/mammals/01_download_canonical_transcripts.py __ALL__
+python scripts/mammals/01_get_canonical_transcripts_from_gtf.py \
+  --gtf data/mammals/Homo_sapiens.GRCh38.116.gtf.gz
 ```
 
-For example, process human annotations only with
-`python scripts/mammals/01_download_canonical_transcripts.py human`.
+The script reads transcript, exon, and CDS features in two streaming passes,
+selecting canonical transcripts (`Ensembl_canonical`) from protein-coding
+genes. It writes a tab-separated table to
+`data/mammals/01_canonical_transcripts.tsv`, relative to the project root.
+Run it once per GTF input; each run replaces that output table.
 
-It writes one tab-separated file per species to
-`data/mammals/01_canonical_transcripts_{species_id}.tsv`, using the species IDs
-in `SPECIES_ORDER`. Each file contains gene ID/name and biotype, transcript ID
-and biotype, protein ID, and CDS length. REST, FTP, missing-species, malformed
-GTF, and missing-canonical-annotation failures are logged and cause a non-zero
-exit status. A species output is written only after its GTF has been completely
-downloaded and validated.
+`cds_start` and `cds_end` are 1-based positions in the spliced transcript,
+measured from its 5′ end. They are transcript-relative coordinates, not
+genomic coordinates. `cds_length` is the sum of the lengths of the individual
+CDS segments, so introns are excluded. The output also contains gene and
+transcript IDs, names and biotypes, and the protein ID when present. Ensembl
+ID version suffixes are preserved.
+
+Transcripts with missing exons or CDS records, inconsistent chromosome or
+strand, or CDS segments that do not map contiguously within exons are excluded
+and counted in the command-line summary. Malformed GTF records produce an
+informative error rather than an incomplete output.
 
 ### Ortholog and structure analysis
 
