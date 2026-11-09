@@ -3,20 +3,6 @@ RNA secondary structures around the start codon.
 
 ## Environments
 
-The Django project and bioinformatics scripts use separate Conda environments.
-Create and activate the Django environment from the repository root with:
-
-```bash
-mamba env create -f django-env.yml
-mamba activate start-ss
-```
-
-It uses Python 3.14 and Django 6.1.2. To apply changes to `django-env.yml`:
-
-```bash
-mamba env update -f django-env.yml --prune
-```
-
 Create and activate the shared scripts environment with:
 
 ```bash
@@ -31,12 +17,9 @@ after changing `scripts-env.yml` with:
 mamba env update -f scripts-env.yml --prune
 ```
 
-## Human transcript workflow
-
-See [the human transcript guide](docs/2026/1103.human/README.md) for instructions to
-download MANE Select transcripts and their GenBank records.
-
-The [planned mammalian analysis](docs/2026/1109.mammals/README.md) describes the
-proposed cross-species workflow. Mammalian scripts and data have not been
-implemented yet.
+## Data Log
+### 2026
+* [1103.human](docs/2026/1103.human/README.md) - instructions to
+download MANE Select transcripts and their GenBank records
+* [1109.mammals](docs/2026/1109.mammals/README.md) -- cross-species workflow
 ```
