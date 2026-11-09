@@ -1,14 +1,11 @@
-# Planned mammalian analysis
+# Mammalian analysis
 
-This document describes a planned cross-species analysis of RNA secondary
-structures around annotated translation start codons. Canonical transcript
-annotation retrieval is implemented; downstream orthology, sequence, and
-structure analysis remains planned.
+This document describes the reproducible cross-species analysis of RNA
+secondary structures around annotated translation start codons.
 
-## Planned species and assemblies
+## Species and assemblies
 
-The planned species are listed in the project order. Assemblies are UCSC
-assembly names.
+The species are listed in analysis order. Assemblies are UCSC assembly names.
 
 | No. | Species ID | Common name | Scientific name | UCSC assembly |
 | --- | --- | --- | --- | --- |
@@ -26,7 +23,7 @@ assembly names.
 | 12 | rabbit | Rabbit | *Oryctolagus cuniculus* | oryCun2 |
 | 13 | marmoset | Marmoset | *Callithrix jacchus* | calJac3 |
 
-## Planned workflow
+## Workflow
 
 ### Download canonical transcript annotations
 
@@ -43,31 +40,35 @@ downloaded.
 
 ### Step 1. Download the Ensembl GTF file
 
-For the species you plan to process, use its Ensembl REST `/info/species`
-record to get `name` (production name), `display_name`, and `assembly`; use
-`/info/data` to get the current release. Set the shell variables below from
-that record. For `species_name`, replace spaces in `display_name` with
-underscores. Repeat this step for each species when processing `__ALL__`.
+The Ensembl 116 FTP release contains GTF files for 10 of the 13 planned
+species. Download the available files with these commands (run from the
+repository root):
 
 ```bash
-species_name="<display_name_with_underscores>"
-production_name="<ensembl_production_name>"
-assembly="<ensembl_assembly>"
-release="<current_ensembl_release>"
-
-wget -P data/mammals \
-  "https://ftp.ensembl.org/pub/release-${release}/gtf/${production_name}/${species_name}.${assembly}.${release}.gtf.gz"
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/homo_sapiens/Homo_sapiens.GRCh38.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/mus_musculus/Mus_musculus.GRCm39.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/bos_taurus/Bos_taurus.ARS-UCD2.0.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/ovis_aries/Ovis_aries.ARS-UI_Ramb_v3.0.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/ailuropoda_melanoleuca/Ailuropoda_melanoleuca.ASM200744v2.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/loxodonta_africana/Loxodonta_africana.loxAfr3.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/canis_lupus_familiaris/Canis_lupus_familiaris.ROS_Cfam_1.0.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/equus_caballus/Equus_caballus.EquCab3.0.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/oryctolagus_cuniculus/Oryctolagus_cuniculus.OryCun2.0.116.gtf.gz
+wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/callithrix_jacchus/Callithrix_jacchus.mCalJac1.pat.X.116.gtf.gz
 ```
 
-`wget -P` retains the GTF's Ensembl filename in `data/mammals/`; that is the
-filename the script expects. The downloaded `*.gtf.gz` files are ignored by
-Git.
+These commands use Ensembl's `current` FTP path and the release 116 filenames.
+`wget -P` retains each filename in `data/mammals/`, where the script expects
+it. The release 116 GTF directory does not contain files for killer whale,
+manatee, or aardvark, so those three species cannot be downloaded from these
+Ensembl paths. The downloaded `*.gtf.gz` files are ignored by Git.
 
 ### Step 2. Parse canonical transcript annotations
 
 Pass a species ID from `SPECIES_ORDER` to process one species, or pass
-`__ALL__` after downloading all 13 GTF files. Run from the repository root or
-another working directory with the `start-ss-scripts` environment active:
+`__ALL__` after all required species GTF files are available locally. Run from
+the repository root or another working directory with the `start-ss-scripts`
+environment active:
 
 ```bash
 python scripts/mammals/01_download_canonical_transcripts.py __ALL__
@@ -84,19 +85,19 @@ GTF, and missing-canonical-annotation failures are logged and cause a non-zero
 exit status. A species output is written only after its GTF has been completely
 downloaded and validated.
 
-### Planned downstream analysis
+### Ortholog and structure analysis
 
-The proposed analysis will identify orthologous genes across these species,
-retrieve annotated transcripts, and extract transcript-oriented 50-nt windows
+The analysis identifies orthologous genes across these species, retrieves
+annotated transcripts, and extracts transcript-oriented 50-nt windows
 around each annotated start codon: 23 nt upstream, the ATG start codon, and
 24 nt downstream. The resulting windows will be used to analyze conservation
 of predicted RNA secondary structures.
 
-Implementation will need to document orthology criteria, transcript and
-isoform selection, annotation and sequence sources, missing-data handling, and
-the structure prediction software, version, and settings. Predicted structure
-is a model; conservation or association in these data does not establish a
-causal effect on translation initiation.
+The analysis records orthology criteria, transcript and isoform selection,
+annotation and sequence sources, missing-data handling, and structure
+prediction software, version, and settings. Predicted structure is a model;
+conservation or association in these data does not establish a causal effect
+on translation initiation.
 
-Additional mammalian scripts and inputs will live under `scripts/mammals/` and
-`data/mammals/`. Derived results may be stored under `results/mammals/`.
+Mammalian scripts and inputs are stored under `scripts/mammals/` and
+`data/mammals/`. Derived results are stored under `results/mammals/`.
