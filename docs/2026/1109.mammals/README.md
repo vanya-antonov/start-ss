@@ -10,21 +10,21 @@ structure analysis remains planned.
 The planned species are listed in the project order. Assemblies are UCSC
 assembly names.
 
-| Common name | Scientific name | UCSC assembly |
-| --- | --- | --- |
-| Human | *Homo sapiens* | hg38 |
-| Mouse | *Mus musculus* | mm10 |
-| Killer whale | *Orcinus orca* | orcOrc1 |
-| Cow | *Bos taurus* | bosTau8 |
-| Sheep | *Ovis aries* | oviAri3 |
-| Panda | *Ailuropoda melanoleuca* | ailMel1 |
-| Manatee | *Trichechus manatus latirostris* | triMan1 |
-| Elephant | *Loxodonta africana* | loxAfr3 |
-| Dog | *Canis lupus familiaris* | canFam3 |
-| Aardvark | *Orycteropus afer afer* | oryAfe1 |
-| Horse | *Equus caballus* | equCab2 |
-| Rabbit | *Oryctolagus cuniculus* | oryCun2 |
-| Marmoset | *Callithrix jacchus* | calJac3 |
+| Species ID | Common name | Scientific name | UCSC assembly |
+| --- | --- | --- | --- |
+| human | Human | *Homo sapiens* | hg38 |
+| mouse | Mouse | *Mus musculus* | mm10 |
+| whale | Killer whale | *Orcinus orca* | orcOrc1 |
+| cow | Cow | *Bos taurus* | bosTau8 |
+| sheep | Sheep | *Ovis aries* | oviAri3 |
+| panda | Panda | *Ailuropoda melanoleuca* | ailMel1 |
+| manatee | Manatee | *Trichechus manatus latirostris* | triMan1 |
+| elephant | Elephant | *Loxodonta africana* | loxAfr3 |
+| dog | Dog | *Canis lupus familiaris* | canFam3 |
+| aardvark | Aardvark | *Orycteropus afer afer* | oryAfe1 |
+| horse | Horse | *Equus caballus* | equCab2 |
+| rabbit | Rabbit | *Oryctolagus cuniculus* | oryCun2 |
+| marmoset | Marmoset | *Callithrix jacchus* | calJac3 |
 
 ## Planned workflow
 
