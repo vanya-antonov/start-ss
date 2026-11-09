@@ -22,4 +22,4 @@ mamba env update -f scripts-env.yml --prune
 * [1103.human](docs/2026/1103.human/README.md) - instructions to
 download MANE Select transcripts and their GenBank records
 * [1109.mammals](docs/2026/1109.mammals/README.md) -- cross-species workflow
-```
+
