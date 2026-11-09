@@ -1,8 +1,9 @@
 # Planned mammalian analysis
 
 This document describes a planned cross-species analysis of RNA secondary
-structures around annotated translation start codons. The workflow is not yet
-implemented: no mammalian scripts or data are present.
+structures around annotated translation start codons. Canonical transcript
+annotation retrieval is implemented; downstream orthology, sequence, and
+structure analysis remains planned.
 
 ## Planned species and assemblies
 
@@ -27,6 +28,35 @@ assembly names.
 
 ## Planned workflow
 
+### Download canonical transcript annotations
+
+The downloader queries Ensembl BioMart for each species' canonical
+(`transcript_is_canonical = 1`) transcript from protein-coding genes. It
+resolves datasets by scientific name using the live BioMart dataset registry;
+UCSC assembly IDs are not used as Ensembl dataset names. It does not retrieve
+genome FASTA, GTF, or GenBank files.
+
+Pass a species ID from `SPECIES_ORDER` to download one species, or pass
+`__ALL__` to download all 13. Run from the repository root or another working
+directory with the `start-ss-scripts` environment active:
+
+```bash
+python scripts/mammals/01_download_canonical_transcripts.py __ALL__
+```
+
+For example, download human annotations only with
+`python scripts/mammals/01_download_canonical_transcripts.py human`.
+
+It writes one tab-separated file per species to
+`data/mammals/01_canonical_transcripts_{species_id}.tsv`, using the species IDs
+in `SPECIES_ORDER`. Each file contains gene ID/name and biotype, transcript ID
+and biotype, and protein ID and CDS length when BioMart provides them. Missing
+optional fields are blank. API or dataset failures are logged, cause a
+non-zero exit status, and do not replace that species' output with a partial
+file.
+
+### Planned downstream analysis
+
 The proposed analysis will identify orthologous genes across these species,
 retrieve annotated transcripts, and extract transcript-oriented 50-nt windows
 around each annotated start codon: 23 nt upstream, the ATG start codon, and
@@ -39,6 +69,5 @@ the structure prediction software, version, and settings. Predicted structure
 is a model; conservation or association in these data does not establish a
 causal effect on translation initiation.
 
-When implemented, mammalian scripts and inputs will live under
-`scripts/mammals/` and `data/mammals/`. Derived results may be stored under
-`results/mammals/`. No mammalian scripts or data have been implemented yet.
+Additional mammalian scripts and inputs will live under `scripts/mammals/` and
+`data/mammals/`. Derived results may be stored under `results/mammals/`.
