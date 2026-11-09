@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OUTPUT_PATH = PROJECT_ROOT / "data" / "mammals" / "01_canonical_transcripts.tsv"
+OUTPUT_DIR = PROJECT_ROOT / "data" / "mammals"
 OUTPUT_COLUMNS = [
     "gene_id",
     "gene_name",
@@ -317,16 +317,21 @@ def build_rows(gtf_path):
     selected = get_transcript_metadata(gtf_path)
     exons, cds_segments = collect_transcript_segments(gtf_path, selected)
     rows = []
-    excluded_reasons = Counter()
+    exclusions = []
 
     for transcript_id, metadata in selected.items():
+        if not metadata["gene_name"].strip():
+            exclusions.append(
+                [metadata["gene_id"], transcript_id, "missing gene_name"]
+            )
+            continue
         cds_coordinates, reason = map_cds_to_transcript(
             metadata,
             exons.get(transcript_id, []),
             cds_segments.get(transcript_id, []),
         )
         if reason:
-            excluded_reasons[reason] += 1
+            exclusions.append([metadata["gene_id"], transcript_id, reason])
             continue
         cds_start, cds_end, cds_length = cds_coordinates
         rows.append(
@@ -344,23 +349,62 @@ def build_rows(gtf_path):
         )
 
     rows.sort(key=lambda row: (row[0], row[3]))
-    return len(selected), rows, excluded_reasons
+    exclusions.sort(key=lambda row: (row[0], row[1]))
+    return len(selected), rows, exclusions
 
 
-def write_output(rows):
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+def gtf_prefix(gtf_path):
+    """Return the Ensembl species prefix from the GTF filename."""
+    suffix = ".gtf.gz"
+    if not gtf_path.name.endswith(suffix):
+        raise ValueError(f"Expected a .gtf.gz input filename: {gtf_path.name}")
+    prefix = gtf_path.name[:-len(suffix)].split(".", maxsplit=1)[0]
+    if not prefix:
+        raise ValueError(f"Could not determine species prefix from {gtf_path.name}")
+    return prefix
+
+
+def output_path_for_gtf(gtf_path):
+    """Build the TSV path with the species prefix before the output label."""
+    return OUTPUT_DIR / f"{gtf_prefix(gtf_path)}.canonical_transcripts.tsv"
+
+
+def errors_path_for_gtf(gtf_path):
+    """Build the exclusions report path for the GTF species prefix."""
+    return OUTPUT_DIR / f"01_{gtf_prefix(gtf_path)}.errors.txt"
+
+
+def write_text_atomically(path, write_content):
+    path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{OUTPUT_PATH.name}.", dir=OUTPUT_PATH.parent
+        prefix=f".{path.name}.", dir=path.parent
     )
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as output_file:
-            writer = csv.writer(output_file, delimiter="\t", lineterminator="\n")
-            writer.writerow(OUTPUT_COLUMNS)
-            writer.writerows(rows)
-        Path(temporary_name).replace(OUTPUT_PATH)
+            write_content(output_file)
+        Path(temporary_name).replace(path)
     except Exception:
         Path(temporary_name).unlink(missing_ok=True)
         raise
+
+
+def write_output(gtf_path, rows, exclusions):
+    output_path = output_path_for_gtf(gtf_path)
+    errors_path = errors_path_for_gtf(gtf_path)
+
+    def write_tsv(output_file):
+        writer = csv.writer(output_file, delimiter="\t", lineterminator="\n")
+        writer.writerow(OUTPUT_COLUMNS)
+        writer.writerows(rows)
+
+    def write_errors(output_file):
+        writer = csv.writer(output_file, delimiter="\t", lineterminator="\n")
+        writer.writerow(["gene_id", "transcript_id", "reason"])
+        writer.writerows(exclusions)
+
+    write_text_atomically(output_path, write_tsv)
+    write_text_atomically(errors_path, write_errors)
+    return output_path, errors_path
 
 
 def main():
@@ -381,18 +425,20 @@ def main():
         parser.error(f"GTF file does not exist: {args.gtf}")
 
     try:
-        canonical_count, rows, excluded_reasons = build_rows(args.gtf)
-        write_output(rows)
-    except (GTFFormatError, OSError, UnicodeError) as error:
+        output_path = output_path_for_gtf(args.gtf)
+        canonical_count, rows, exclusions = build_rows(args.gtf)
+        output_path, errors_path = write_output(args.gtf, rows, exclusions)
+    except (GTFFormatError, OSError, UnicodeError, ValueError) as error:
         parser.error(f"Could not process GTF {args.gtf}: {error}")
 
-    excluded_count = sum(excluded_reasons.values())
+    excluded_count = len(exclusions)
     print(f"Canonical protein-coding transcripts found: {canonical_count}")
     print(f"Transcripts written: {len(rows)}")
     print(f"Transcripts excluded for missing/inconsistent CDS or exon data: {excluded_count}")
-    for reason, count in sorted(excluded_reasons.items()):
+    for reason, count in sorted(Counter(row[2] for row in exclusions).items()):
         print(f"  {reason}: {count}")
-    print(f"Output: {OUTPUT_PATH}")
+    print(f"Output: {output_path}")
+    print(f"Excluded transcripts: {errors_path}")
     return 0
 
 

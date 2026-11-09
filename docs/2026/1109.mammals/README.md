@@ -87,6 +87,14 @@ strand, or CDS segments that do not map contiguously within exons are excluded
 and counted in the command-line summary. Malformed GTF records produce an
 informative error rather than an incomplete output.
 
+The output filename is based on the input GTF prefix (the text before the
+first dot). For example, `Homo_sapiens.GRCh38.116.gtf.gz` produces
+`data/mammals/Homo_sapiens.canonical_transcripts.tsv`. Each run writes a
+separate file for its input species. Canonical transcripts without a gene
+name, and transcripts with missing or inconsistent exon/CDS data, are omitted
+from the TSV and listed in `data/mammals/01_<gtf_prefix>.errors.txt` with their
+gene ID, transcript ID, and exclusion reason.
+
 ### Ortholog and structure analysis
 
 The analysis identifies orthologous genes across these species, retrieves
