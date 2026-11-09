@@ -10,21 +10,21 @@ structure analysis remains planned.
 The planned species are listed in the project order. Assemblies are UCSC
 assembly names.
 
-| Species ID | Common name | Scientific name | UCSC assembly |
-| --- | --- | --- | --- |
-| human | Human | *Homo sapiens* | hg38 |
-| mouse | Mouse | *Mus musculus* | mm10 |
-| whale | Killer whale | *Orcinus orca* | orcOrc1 |
-| cow | Cow | *Bos taurus* | bosTau8 |
-| sheep | Sheep | *Ovis aries* | oviAri3 |
-| panda | Panda | *Ailuropoda melanoleuca* | ailMel1 |
-| manatee | Manatee | *Trichechus manatus latirostris* | triMan1 |
-| elephant | Elephant | *Loxodonta africana* | loxAfr3 |
-| dog | Dog | *Canis lupus familiaris* | canFam3 |
-| aardvark | Aardvark | *Orycteropus afer afer* | oryAfe1 |
-| horse | Horse | *Equus caballus* | equCab2 |
-| rabbit | Rabbit | *Oryctolagus cuniculus* | oryCun2 |
-| marmoset | Marmoset | *Callithrix jacchus* | calJac3 |
+| No. | Species ID | Common name | Scientific name | UCSC assembly |
+| --- | --- | --- | --- | --- |
+| 1 | human | Human | *Homo sapiens* | hg38 |
+| 2 | mouse | Mouse | *Mus musculus* | mm10 |
+| 3 | whale | Killer whale | *Orcinus orca* | orcOrc1 |
+| 4 | cow | Cow | *Bos taurus* | bosTau8 |
+| 5 | sheep | Sheep | *Ovis aries* | oviAri3 |
+| 6 | panda | Panda | *Ailuropoda melanoleuca* | ailMel1 |
+| 7 | manatee | Manatee | *Trichechus manatus latirostris* | triMan1 |
+| 8 | elephant | Elephant | *Loxodonta africana* | loxAfr3 |
+| 9 | dog | Dog | *Canis lupus familiaris* | canFam3 |
+| 10 | aardvark | Aardvark | *Orycteropus afer afer* | oryAfe1 |
+| 11 | horse | Horse | *Equus caballus* | equCab2 |
+| 12 | rabbit | Rabbit | *Oryctolagus cuniculus* | oryCun2 |
+| 13 | marmoset | Marmoset | *Callithrix jacchus* | calJac3 |
 
 ## Planned workflow
 
