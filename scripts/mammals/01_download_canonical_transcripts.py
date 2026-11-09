@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Download canonical protein-coding transcript annotations from Ensembl BioMart."""
+"""Download canonical protein-coding transcript annotations from Ensembl GTFs."""
 
-import csv
 import argparse
+import csv
+import gzip
 import logging
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -20,17 +21,8 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from constants import SPECIES_DICT, SPECIES_ORDER  # noqa: E402
 
-BIOMART_URL = "https://www.ensembl.org/biomart/martservice"
-MART_NAME = "ENSEMBL_MART_ENSEMBL"
-OUTPUT_FIELDS = [
-    ("ensembl_gene_id", "Gene stable ID"),
-    ("external_gene_name", "Gene name"),
-    ("gene_biotype", "Gene biotype"),
-    ("ensembl_transcript_id", "Transcript stable ID"),
-    ("transcript_biotype", "Transcript type"),
-    ("ensembl_peptide_id", "Protein stable ID"),
-    ("cds_length", "CDS Length"),
-]
+REST_URL = "https://rest.ensembl.org"
+FTP_URL = "https://ftp.ensembl.org/pub"
 OUTPUT_HEADER = [
     "ensembl_gene_id",
     "gene_name",
@@ -44,110 +36,195 @@ LOGGER = logging.getLogger("canonical_transcripts")
 
 
 def make_session():
-    """Build an HTTP session with bounded retries for transient API failures."""
+    """Build an HTTP session with retries for transient service errors."""
     retry = Retry(
         total=3,
         backoff_factor=1,
         status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=("GET", "POST"),
+        allowed_methods=("GET",),
     )
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=retry))
     session.headers.update({"User-Agent": "start-ss mammalian annotations/1.0"})
+    session.headers.update({"Accept": "application/json"})
     return session
 
 
-def get_metadata(session, **params):
-    """Fetch a BioMart metadata table and return non-empty tab-separated rows."""
-    response = session.get(BIOMART_URL, params=params, timeout=(20, 180))
+def get_json(session, url):
+    response = session.get(url, timeout=(20, 180))
     response.raise_for_status()
-    lines = [line for line in response.text.splitlines() if line.strip()]
-    if not lines or "Query ERROR" in response.text:
-        raise RuntimeError(f"BioMart returned invalid metadata for {params}: {response.text[:300]}")
-    return list(csv.reader(lines, delimiter="\t"))
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError as error:
+        raise RuntimeError(f"Expected JSON from {url}, received invalid JSON") from error
 
 
-def find_dataset(dataset_rows, scientific_name):
-    """Match a species to a dataset using its scientific name, not its UCSC ID."""
-    name_parts = scientific_name.casefold().split()
-    if len(name_parts) < 2:
-        raise ValueError(f"Expected a binomial scientific name: {scientific_name}")
-    # Ensembl dataset labels generally use genus and species, even for a
-    # trinomial subspecies name supplied in project metadata.
-    required_tokens = name_parts[:2]
-    matches = []
-    for row in dataset_rows:
-        if len(row) < 2:
-            continue
-        searchable = " ".join(row[1:]).casefold()
-        if all(token in searchable for token in required_tokens):
-            matches.append((row[0], row[1]))
-    if len(matches) != 1:
-        details = ", ".join(f"{name} ({label})" for name, label in matches) or "none"
-        raise LookupError(
-            f"Expected one Ensembl dataset for {scientific_name}; found {len(matches)}: {details}"
-        )
-    return matches[0]
+def normalize_name(value):
+    """Normalize a scientific or common name for matching."""
+    return re.sub(r"\s+", " ", str(value or "").replace("_", " ").strip()).casefold()
 
 
-def metadata_names(rows):
-    """Return first-column names from BioMart attribute/filter metadata."""
-    return {row[0].strip() for row in rows if row and row[0].strip()}
+def scientific_name_matches(expected, observed):
+    """Match binomials while allowing project metadata to include a subspecies."""
+    expected_parts = normalize_name(expected).split()
+    observed_parts = normalize_name(observed).split()
+    return len(expected_parts) >= 2 and observed_parts[:2] == expected_parts[:2]
 
 
-def choose_filter(available_filters, candidates, description):
-    for name in candidates:
-        if name in available_filters:
-            return name
-    raise LookupError(f"BioMart dataset does not expose a {description} filter")
-
-
-def build_query(dataset, attributes, gene_biotype_filter, canonical_filter):
-    query = ET.Element(
-        "Query",
-        {
-            "virtualSchemaName": "default",
-            "formatter": "TSV",
-            "header": "0",
-            "uniqueRows": "1",
-            "count": "",
-            "datasetConfigVersion": "0.6",
-        },
+def common_name_matches(expected, observed):
+    """Match a common name exactly or as a whole phrase within a qualified name."""
+    expected_normalized = normalize_name(expected)
+    observed_normalized = normalize_name(observed)
+    if not expected_normalized or not observed_normalized:
+        return False
+    return (
+        expected_normalized == observed_normalized
+        or f" {expected_normalized} " in f" {observed_normalized} "
     )
-    dataset_element = ET.SubElement(query, "Dataset", {"name": dataset, "interface": "default"})
-    ET.SubElement(dataset_element, "Filter", {"name": gene_biotype_filter, "value": "protein_coding"})
-    ET.SubElement(dataset_element, "Filter", {"name": canonical_filter, "value": "1"})
-    for attribute, _ in attributes:
-        ET.SubElement(dataset_element, "Attribute", {"name": attribute})
-    return ET.tostring(query, encoding="unicode")
 
 
-def parse_result(text, requested_attributes, available_attributes):
-    """Validate the BioMart response and expand unavailable optional columns."""
-    if "Query ERROR" in text or "ERROR:" in text[:500]:
-        raise RuntimeError(f"BioMart query failed: {text[:500]}")
-    rows = list(csv.reader(text.splitlines(), delimiter="\t"))
-    if not rows:
-        raise RuntimeError("BioMart returned an empty response")
-    expected = [attribute for attribute, _ in requested_attributes]
-    if len(rows) == 0:
-        raise RuntimeError("BioMart query returned no canonical protein-coding transcripts")
+def find_ensembl_species(species_records, species_id, species_info):
+    """Find exactly one REST species record using both configured names."""
+    matches = []
+    scientific_candidates = []
+    for record in species_records:
+        display_name = record.get("display_name", "")
+        common_name = record.get("common_name", "")
+        if not scientific_name_matches(species_info["species"], display_name):
+            continue
+        scientific_candidates.append(record)
+        if common_name_matches(species_info["title"], common_name):
+            matches.append(record)
 
-    optional_indices = {
-        index for index, (attribute, _) in enumerate(requested_attributes)
-        if attribute not in available_attributes
-    }
-    result = []
-    for line_number, row in enumerate(rows, start=1):
-        if len(row) != len(expected):
-            raise RuntimeError(
-                f"Malformed BioMart row {line_number}: expected {len(expected)} columns, got {len(row)}"
+    if len(matches) == 1:
+        record = matches[0]
+        if not record.get("name") or not record.get("assembly"):
+            raise LookupError(
+                f"Ensembl species record for {species_id} lacks its production name or assembly"
             )
-        for index in optional_indices:
-            row[index] = ""
-        if not row[0] or not row[3]:
-            raise RuntimeError(f"BioMart row {line_number} is missing a gene or transcript ID")
-        result.append(row)
+        return record
+    if len(matches) > 1:
+        labels = ", ".join(
+            f"{item.get('name')} ({item.get('display_name')}; {item.get('common_name')})"
+            for item in matches
+        )
+        raise LookupError(f"Ambiguous Ensembl species match for {species_id}: {labels}")
+
+    if scientific_candidates:
+        labels = ", ".join(
+            f"{item.get('name')} ({item.get('display_name')}; {item.get('common_name')})"
+            for item in scientific_candidates
+        )
+        raise LookupError(
+            f"Scientific name matched for {species_id}, but common name "
+            f"{species_info['title']!r} did not; Ensembl candidates: {labels}"
+        )
+    raise LookupError(
+        f"No Ensembl species matched {species_id} "
+        f"({species_info['title']}; {species_info['species']})"
+    )
+
+
+def current_release(data_info):
+    releases = data_info.get("releases", [])
+    numeric_releases = [int(release) for release in releases if str(release).isdigit()]
+    if not numeric_releases:
+        raise LookupError(f"Ensembl /info/data did not report a usable release: {releases!r}")
+    return max(numeric_releases)
+
+
+def gtf_location(species_record, release):
+    """Return the local path and matching FTP URL for a release GTF."""
+    production_name = species_record["name"]
+    scientific_file_name = species_record["display_name"].replace(" ", "_")
+    assembly = species_record["assembly"]
+    filename = f"{scientific_file_name}.{assembly}.{release}.gtf.gz"
+    url = f"{FTP_URL}/release-{release}/gtf/{production_name}/{filename}"
+    path = REPOSITORY_ROOT / "data" / "mammals" / filename
+    return path, url
+
+
+def parse_attributes(attribute_text):
+    """Parse the key/value attributes from one GTF record."""
+    attributes = {}
+    for item in attribute_text.strip().strip(";").split(";"):
+        item = item.strip()
+        if not item:
+            continue
+        key, separator, value = item.partition(" ")
+        if not separator:
+            continue
+        value = value.strip().strip('"')
+        if key == "tag":
+            attributes.setdefault(key, []).append(value)
+        else:
+            attributes[key] = value
+    return attributes
+
+
+def parse_gtf(gtf_path):
+    """Stream a GTF and collect canonical protein-coding transcripts and CDS sizes."""
+    transcripts = {}
+    with gzip.open(gtf_path, "rt", encoding="utf-8") as gtf_file:
+        for line_number, line in enumerate(gtf_file, start=1):
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) != 9:
+                raise ValueError(f"Malformed GTF record at line {line_number}: expected 9 columns")
+
+            feature = fields[2]
+            if feature not in {"transcript", "CDS"}:
+                continue
+            attributes = parse_attributes(fields[8])
+            transcript_id = attributes.get("transcript_id")
+            if not transcript_id:
+                continue
+
+            if feature == "transcript":
+                tags = [
+                    tag
+                    for value in attributes.get("tag", [])
+                    for tag in value.split(",")
+                ]
+                if (
+                    attributes.get("transcript_biotype") == "protein_coding"
+                    and attributes.get("gene_biotype") == "protein_coding"
+                    and "Ensembl_canonical" in tags
+                ):
+                    transcripts[transcript_id] = {
+                        "ensembl_gene_id": attributes.get("gene_id", ""),
+                        "gene_name": attributes.get("gene_name", ""),
+                        "gene_biotype": attributes.get("gene_biotype", ""),
+                        "ensembl_transcript_id": transcript_id,
+                        "transcript_biotype": attributes.get("transcript_biotype", ""),
+                        "ensembl_protein_id": attributes.get("protein_id", ""),
+                        "cds_length": 0,
+                    }
+            elif transcript_id in transcripts:
+                try:
+                    start, end = int(fields[3]), int(fields[4])
+                except ValueError as error:
+                    raise ValueError(f"Invalid CDS coordinates at GTF line {line_number}") from error
+                if end < start:
+                    raise ValueError(f"Invalid CDS interval at GTF line {line_number}: {start}-{end}")
+                transcript = transcripts[transcript_id]
+                transcript["cds_length"] += end - start + 1
+                transcript["ensembl_protein_id"] = (
+                    transcript["ensembl_protein_id"] or attributes.get("protein_id", "")
+                )
+
+    if not transcripts:
+        raise LookupError("GTF contains no canonical protein-coding transcript annotations")
+
+    result = []
+    for transcript in transcripts.values():
+        if transcript["cds_length"] <= 0:
+            raise LookupError(
+                "Canonical transcript has no CDS features: "
+                f"{transcript['ensembl_transcript_id']}"
+            )
+        result.append([transcript[field] for field in OUTPUT_HEADER])
     return result
 
 
@@ -168,59 +245,35 @@ def write_species_file(species_id, rows):
     return output_path, len(rows)
 
 
-def download_species(session, species_id, species_info, dataset_rows):
-    scientific_name = species_info["species"]
-    dataset, display_name = find_dataset(dataset_rows, scientific_name)
-    LOGGER.info("%s: matched %s (%s)", species_id, dataset, display_name)
-
-    attributes_rows = get_metadata(session, type="attributes", dataset=dataset, mart=MART_NAME)
-    filters_rows = get_metadata(session, type="filters", dataset=dataset, mart=MART_NAME)
-    available_attributes = metadata_names(attributes_rows)
-    available_filters = metadata_names(filters_rows)
-
-    required_attributes = [
-        ("ensembl_gene_id", "Ensembl gene ID"),
-        ("external_gene_name", "gene name"),
-        ("gene_biotype", "gene biotype"),
-        ("ensembl_transcript_id", "Ensembl transcript ID"),
-        ("transcript_biotype", "transcript biotype"),
-    ]
-    missing = [name for name, _ in required_attributes if name not in available_attributes]
-    if missing:
-        raise LookupError(f"Dataset {dataset} lacks required attributes: {', '.join(missing)}")
-
-    attributes = [
-        (name, label)
-        for name, label in OUTPUT_FIELDS
-        if name in available_attributes or name in {item[0] for item in required_attributes}
-    ]
-    gene_biotype_filter = choose_filter(
-        available_filters, ("biotype", "gene_biotype"), "protein-coding gene biotype"
+def process_species(species_id, species_info, species_records, release):
+    species_record = find_ensembl_species(species_records, species_id, species_info)
+    gtf_path, url = gtf_location(species_record, release)
+    LOGGER.info(
+        "%s: Ensembl species %s (%s; assembly %s), release %d",
+        species_id,
+        species_record["name"],
+        species_record["display_name"],
+        species_record["assembly"],
+        release,
     )
-    canonical_filter = choose_filter(
-        available_filters, ("transcript_is_canonical",), "canonical transcript"
-    )
-    query = build_query(dataset, attributes, gene_biotype_filter, canonical_filter)
-    response = session.get(BIOMART_URL, params={"query": query}, timeout=(20, 600))
-    response.raise_for_status()
-    parsed = parse_result(response.text, attributes, available_attributes)
 
-    # Place each value in the stable seven-column output schema. Optional
-    # fields absent from a dataset remain empty instead of shifting columns.
-    rows = []
-    attribute_indices = {name: index for index, (name, _) in enumerate(attributes)}
-    for source_row in parsed:
-        rows.append([
-            source_row[attribute_indices[name]] if name in attribute_indices else ""
-            for name, _ in OUTPUT_FIELDS
-        ])
-    path, count = write_species_file(species_id, rows)
-    LOGGER.info("%s: wrote %d canonical transcripts to %s", species_id, count, path)
+    if not gtf_path.is_file():
+        relative_path = gtf_path.relative_to(REPOSITORY_ROOT)
+        raise FileNotFoundError(
+            f"Required Ensembl GTF is missing: {relative_path}. Download it first with "
+            f"the wget command documented in docs/2026/1109.mammals/README.md. "
+            f"FTP source: {url}"
+        )
+
+    rows = parse_gtf(gtf_path)
+
+    output_path, count = write_species_file(species_id, rows)
+    LOGGER.info("%s: wrote %d canonical transcripts to %s", species_id, count, output_path)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Download canonical protein-coding transcript annotations from Ensembl BioMart."
+        description="Download canonical protein-coding transcript annotations from Ensembl GTF files."
     )
     parser.add_argument(
         "species_id",
@@ -243,11 +296,15 @@ def main():
     session = make_session()
     failures = []
     try:
-        dataset_rows = get_metadata(
-            session, type="datasets", mart=MART_NAME, virtualSchema="default"
-        )
-    except Exception:
-        LOGGER.exception("Could not retrieve the Ensembl BioMart dataset registry")
+        species_info_response = get_json(session, f"{REST_URL}/info/species")
+        if not isinstance(species_info_response, dict) or not isinstance(
+            species_info_response.get("species"), list
+        ):
+            raise ValueError("Ensembl /info/species response has no species list")
+        species_records = species_info_response["species"]
+        release = current_release(get_json(session, f"{REST_URL}/info/data"))
+    except Exception as error:
+        LOGGER.exception("Could not retrieve Ensembl species or release metadata: %s", error)
         return 1
 
     for species_id in species_ids:
@@ -258,10 +315,10 @@ def main():
             failures.append(message)
             continue
         try:
-            download_species(session, species_id, species_info, dataset_rows)
+            process_species(species_id, species_info, species_records, release)
         except Exception as error:
             message = f"{species_id} ({species_info['species']}): {error}"
-            LOGGER.exception("Failed to download %s", message)
+            LOGGER.exception("Failed to process %s", message)
             failures.append(message)
 
     if failures:
@@ -272,7 +329,7 @@ def main():
             "\n- ".join(failures),
         )
         return 1
-    LOGGER.info("Successfully downloaded canonical transcript annotations for %d species", len(species_ids))
+    LOGGER.info("Successfully downloaded annotations for %d species", len(species_ids))
     return 0
 
 

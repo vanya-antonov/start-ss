@@ -12,3 +12,6 @@ db.sqlite3-journal
 
 # Downloaded human transcript records
 data/human/02_mane_transcripts.gb.gz
+
+# Manually downloaded mammalian Ensembl annotations
+data/mammals/*.gtf.gz

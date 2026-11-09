@@ -30,30 +30,59 @@ assembly names.
 
 ### Download canonical transcript annotations
 
-The downloader queries Ensembl BioMart for each species' canonical
-(`transcript_is_canonical = 1`) transcript from protein-coding genes. It
-resolves datasets by scientific name using the live BioMart dataset registry;
-UCSC assembly IDs are not used as Ensembl dataset names. It does not retrieve
-genome FASTA, GTF, or GenBank files.
+The workflow uses the Ensembl REST API at `/info/species` to match each
+configured common and scientific name to an Ensembl production name, and
+`/info/data` to determine the current release. Download the matching GTF
+annotation manually before running the script. The script checks for that file
+under `data/mammals/`, parses it in streaming mode, and never downloads,
+deletes, or modifies the GTF. UCSC assembly IDs are not treated as Ensembl
+production names. Only transcripts tagged `Ensembl_canonical` with both gene
+and transcript biotypes `protein_coding` are included. CDS length is the sum
+of the transcript's CDS feature lengths. Genome FASTA and GenBank files are not
+downloaded.
 
-Pass a species ID from `SPECIES_ORDER` to download one species, or pass
-`__ALL__` to download all 13. Run from the repository root or another working
-directory with the `start-ss-scripts` environment active:
+### Step 1. Download the Ensembl GTF file
+
+For the species you plan to process, use its Ensembl REST `/info/species`
+record to get `name` (production name), `display_name`, and `assembly`; use
+`/info/data` to get the current release. Set the shell variables below from
+that record. For `species_name`, replace spaces in `display_name` with
+underscores. Repeat this step for each species when processing `__ALL__`.
+
+```bash
+species_name="<display_name_with_underscores>"
+production_name="<ensembl_production_name>"
+assembly="<ensembl_assembly>"
+release="<current_ensembl_release>"
+
+wget -P data/mammals \
+  "https://ftp.ensembl.org/pub/release-${release}/gtf/${production_name}/${species_name}.${assembly}.${release}.gtf.gz"
+```
+
+`wget -P` retains the GTF's Ensembl filename in `data/mammals/`; that is the
+filename the script expects. The downloaded `*.gtf.gz` files are ignored by
+Git.
+
+### Step 2. Parse canonical transcript annotations
+
+Pass a species ID from `SPECIES_ORDER` to process one species, or pass
+`__ALL__` after downloading all 13 GTF files. Run from the repository root or
+another working directory with the `start-ss-scripts` environment active:
 
 ```bash
 python scripts/mammals/01_download_canonical_transcripts.py __ALL__
 ```
 
-For example, download human annotations only with
+For example, process human annotations only with
 `python scripts/mammals/01_download_canonical_transcripts.py human`.
 
 It writes one tab-separated file per species to
 `data/mammals/01_canonical_transcripts_{species_id}.tsv`, using the species IDs
 in `SPECIES_ORDER`. Each file contains gene ID/name and biotype, transcript ID
-and biotype, and protein ID and CDS length when BioMart provides them. Missing
-optional fields are blank. API or dataset failures are logged, cause a
-non-zero exit status, and do not replace that species' output with a partial
-file.
+and biotype, protein ID, and CDS length. REST, FTP, missing-species, malformed
+GTF, and missing-canonical-annotation failures are logged and cause a non-zero
+exit status. A species output is written only after its GTF has been completely
+downloaded and validated.
 
 ### Planned downstream analysis
 
