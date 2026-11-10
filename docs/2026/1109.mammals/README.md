@@ -25,7 +25,7 @@ The species are listed in analysis order. Assemblies are UCSC assembly names.
 
 ## Workflow
 
-### Step 1. Download Ensembl GTF annotations
+### Step 0. Download Ensembl GTF annotations
 
 Run from the repository root:
 
@@ -44,12 +44,12 @@ wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/callithrix_jacchus/
 
 Ensembl 116 does not provide GTFs here for killer whale, manatee, or aardvark.
 
-### Step 2. Extract canonical transcripts and CDS coordinates
+### Step 1. Extract canonical transcripts and CDS coordinates
 
 Run the parser once for each downloaded annotation:
 
 ```bash
-time python scripts/mammals/01_get_canonical_transcripts_from_gtf.py --gtf data/mammals/Homo_sapiens.GRCh38.116.gtf.gz -o data/mammals/01_human
+time python scripts/mammals/01_get_canonical_transcripts_from_gtf.py --gtf data/mammals/Homo_sapiens.GRCh38.116.gtf.gz -o data/mammals/01_human --exclude_genes_without_name
 time python scripts/mammals/01_get_canonical_transcripts_from_gtf.py --gtf data/mammals/Mus_musculus.GRCm39.116.gtf.gz -o data/mammals/01_mouse
 time python scripts/mammals/01_get_canonical_transcripts_from_gtf.py --gtf data/mammals/Bos_taurus.ARS-UCD2.0.116.gtf.gz -o data/mammals/01_cow
 time python scripts/mammals/01_get_canonical_transcripts_from_gtf.py --gtf data/mammals/Ovis_aries.ARS-UI_Ramb_v3.0.116.gtf.gz -o data/mammals/01_sheep
@@ -70,6 +70,18 @@ transcript and CDS lengths, and CDS coordinates relative to the spliced
 transcript.
 
 ### Ortholog and structure analysis
+
+#### Step 2. Identify human orthologs
+
+```bash
+python scripts/mammals/02_identify_orthologous_genes.py
+```
+
+Reads `gene_id` and `gene_name` from `01_Homo_sapiens.canonical_transcripts.tsv`;
+writes one row per human gene to `03_human_orthologs.tsv`. It queries Ensembl
+Compara for the nine other species with Ensembl 116 GTFs, caches responses in
+`data/mammals/.cache/`, and retains multiple orthologs in semicolon-separated
+fields. Use `--input`, `--output`, or `--cache-dir` to override paths.
 
 The analysis identifies orthologous genes across these species, retrieves
 annotated transcripts, and extracts transcript-oriented 50-nt windows

@@ -327,14 +327,14 @@ def map_cds_to_transcript(metadata, exon_segments, cds_segments):
     return (mapped[0][0], mapped[-1][1], cds_length), None
 
 
-def build_rows(gtf_path):
+def build_rows(gtf_path, exclude_genes_without_name=False):
     selected = get_transcript_metadata(gtf_path)
     exons, cds_segments = collect_transcript_segments(gtf_path, selected)
     rows = []
     exclusions = []
 
     for transcript_id, metadata in selected.items():
-        if not metadata["gene_name"].strip():
+        if exclude_genes_without_name and not metadata["gene_name"].strip():
             exclusions.append(
                 [metadata["gene_id"], transcript_id, "missing gene_name"]
             )
@@ -450,12 +450,19 @@ def main():
             "are appended"
         ),
     )
+    parser.add_argument(
+        "--exclude_genes_without_name",
+        action="store_true",
+        help="Exclude transcripts whose gene has no gene_name (default: retain them)",
+    )
     args = parser.parse_args()
     if not args.gtf.is_file():
         parser.error(f"GTF file does not exist: {args.gtf}")
 
     try:
-        canonical_count, rows, exclusions = build_rows(args.gtf)
+        canonical_count, rows, exclusions = build_rows(
+            args.gtf, args.exclude_genes_without_name
+        )
         output_path, errors_path = write_output(
             args.gtf, rows, exclusions, args.output_file_prefix
         )
