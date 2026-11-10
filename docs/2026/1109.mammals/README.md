@@ -25,7 +25,21 @@ The species are listed in analysis order. Assemblies are UCSC assembly names.
 
 ## Workflow
 
-### Step 0. Download Ensembl GTF annotations
+### Step 0. Download Ensembl Compara homologies TSV
+
+Download the `protein_default` homology dump for Ensembl release 116, matching
+the GTF annotations below. Save it as
+`data/mammals/ensembl_compara_homologies.tsv.gz`:
+
+```bash
+wget -O data/mammals/ensembl_compara_homologies.tsv.gz https://ftp.ensembl.org/pub/current/tsv/ensembl-compara/homologies/Compara.116.protein_default.homologies.tsv.gz
+```
+
+The TSV contains gene-level Compara relationships, including orthology type,
+Ensembl gene IDs, sequence identity, and whole-genome alignment coverage. It
+is intended as the local input for Step 3, avoiding one REST request per gene.
+
+### Step 1. Download Ensembl GTF annotations
 
 Run from the repository root:
 
@@ -44,7 +58,7 @@ wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/callithrix_jacchus/
 
 Ensembl 116 does not provide GTFs here for killer whale, manatee, or aardvark.
 
-### Step 1. Extract canonical transcripts and CDS coordinates
+### Step 2. Extract canonical transcripts and CDS coordinates
 
 Run the parser once for each downloaded annotation:
 
@@ -69,17 +83,16 @@ The table includes versioned IDs,
 transcript and CDS lengths, and CDS coordinates relative to the spliced
 transcript.
 
-### Step 2. Identify human orthologs
+### Step 3. Identify human orthologs
 
 ```bash
 python scripts/mammals/02_identify_orthologous_genes.py
 ```
 
-Reads `gene_id` and `gene_name` from `01_Homo_sapiens.canonical_transcripts.tsv`;
-writes one row per human gene to `03_human_orthologs.tsv`. It queries Ensembl
-Compara for the nine other species with Ensembl 116 GTFs, caches responses in
-`data/mammals/.cache/`, and retains multiple orthologs in semicolon-separated
-fields. Use `--input`, `--output`, or `--cache-dir` to override paths.
+Reads `gene_id` and `gene_name` from `01_Homo_sapiens.canonical_transcripts.tsv`
+and writes one row per human gene to `03_human_orthologs.tsv`. The current
+script still queries the REST API and does not yet read the local TSV; that
+integration is needed for Step 3 to avoid individual API requests.
 
 The analysis identifies orthologous genes across these species, retrieves
 annotated transcripts, and extracts transcript-oriented 50-nt windows
