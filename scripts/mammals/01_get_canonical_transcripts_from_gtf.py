@@ -20,6 +20,7 @@ OUTPUT_COLUMNS = [
     "transcript_id",
     "transcript_biotype",
     "protein_id",
+    "transcript_length",
     "cds_start",
     "cds_end",
     "cds_length",
@@ -104,6 +105,15 @@ def first_attribute(attributes, key, default=""):
     return values[0] if values else default
 
 
+def versioned_id(attributes, id_key, version_key):
+    """Return an Ensembl ID with its version, whether embedded or separate."""
+    identifier = first_attribute(attributes, id_key)
+    version = first_attribute(attributes, version_key)
+    if identifier and version and not identifier.rsplit(".", maxsplit=1)[-1].isdigit():
+        identifier = f"{identifier}.{version}"
+    return identifier
+
+
 def iter_gtf_records(gtf_path, pass_name, canonical_count):
     """Yield relevant GTF records without loading the annotation into memory."""
     try:
@@ -170,7 +180,7 @@ def get_transcript_metadata(gtf_path):
     for record in iter_gtf_records(gtf_path, "Pass 1/2", lambda: len(canonical)):
         attributes = record.attributes
         if record.feature == "gene":
-            gene_id = first_attribute(attributes, "gene_id")
+            gene_id = versioned_id(attributes, "gene_id", "gene_version")
             if gene_id:
                 genes[gene_id] = {
                     "gene_name": first_attribute(attributes, "gene_name"),
@@ -180,8 +190,8 @@ def get_transcript_metadata(gtf_path):
             tags = [tag for value in attributes.get("tag", []) for tag in value.split(",")]
             if "Ensembl_canonical" not in tags:
                 continue
-            transcript_id = first_attribute(attributes, "transcript_id")
-            gene_id = first_attribute(attributes, "gene_id")
+            transcript_id = versioned_id(attributes, "transcript_id", "transcript_version")
+            gene_id = versioned_id(attributes, "gene_id", "gene_version")
             if not transcript_id or not gene_id:
                 raise GTFFormatError(
                     f"Canonical transcript record at GTF line {record.line_number} "
@@ -193,7 +203,7 @@ def get_transcript_metadata(gtf_path):
                 "gene_biotype": first_attribute(attributes, "gene_biotype"),
                 "transcript_id": transcript_id,
                 "transcript_biotype": first_attribute(attributes, "transcript_biotype"),
-                "protein_id": first_attribute(attributes, "protein_id"),
+                "protein_id": versioned_id(attributes, "protein_id", "protein_version"),
                 "chromosome": record.chromosome,
                 "strand": record.strand,
             }
@@ -228,7 +238,9 @@ def collect_transcript_segments(gtf_path, selected_transcripts):
     for record in iter_gtf_records(gtf_path, "Pass 2/2", lambda: len(selected_transcripts)):
         if record.feature not in {"exon", "CDS"}:
             continue
-        transcript_id = first_attribute(record.attributes, "transcript_id")
+        transcript_id = versioned_id(
+            record.attributes, "transcript_id", "transcript_version"
+        )
         if not transcript_id:
             raise GTFFormatError(
                 f"{record.feature} record at GTF line {record.line_number} "
@@ -240,7 +252,9 @@ def collect_transcript_segments(gtf_path, selected_transcripts):
         target = exons if record.feature == "exon" else cds_segments
         target[transcript_id].append(segment)
         if record.feature == "CDS":
-            protein_id = first_attribute(record.attributes, "protein_id")
+            protein_id = versioned_id(
+                record.attributes, "protein_id", "protein_version"
+            )
             if protein_id and not selected_transcripts[transcript_id]["protein_id"]:
                 selected_transcripts[transcript_id]["protein_id"] = protein_id
     print(
@@ -334,6 +348,10 @@ def build_rows(gtf_path):
             exclusions.append([metadata["gene_id"], transcript_id, reason])
             continue
         cds_start, cds_end, cds_length = cds_coordinates
+        transcript_length = sum(
+            end - start + 1
+            for _, _, start, end in exons.get(transcript_id, [])
+        )
         rows.append(
             [
                 metadata["gene_id"],
@@ -342,6 +360,7 @@ def build_rows(gtf_path):
                 metadata["transcript_id"],
                 metadata["transcript_biotype"],
                 metadata["protein_id"],
+                transcript_length,
                 cds_start,
                 cds_end,
                 cds_length,
@@ -364,14 +383,16 @@ def gtf_prefix(gtf_path):
     return prefix
 
 
-def output_path_for_gtf(gtf_path):
-    """Build the TSV path with the species prefix before the output label."""
-    return OUTPUT_DIR / f"01_{gtf_prefix(gtf_path)}.canonical_transcripts.tsv"
+def output_path_for_gtf(gtf_path, output_file_prefix=None):
+    """Build the TSV path from an optional user prefix or the GTF filename."""
+    prefix = output_file_prefix or OUTPUT_DIR / f"01_{gtf_prefix(gtf_path)}"
+    return Path(f"{prefix}.canonical_transcripts.tsv")
 
 
-def errors_path_for_gtf(gtf_path):
-    """Build the exclusions report path for the GTF species prefix."""
-    return OUTPUT_DIR / f"01_{gtf_prefix(gtf_path)}.errors.txt"
+def errors_path_for_gtf(gtf_path, output_file_prefix=None):
+    """Build the exclusions report path from the same output prefix."""
+    prefix = output_file_prefix or OUTPUT_DIR / f"01_{gtf_prefix(gtf_path)}"
+    return Path(f"{prefix}.errors.txt")
 
 
 def write_text_atomically(path, write_content):
@@ -388,9 +409,9 @@ def write_text_atomically(path, write_content):
         raise
 
 
-def write_output(gtf_path, rows, exclusions):
-    output_path = output_path_for_gtf(gtf_path)
-    errors_path = errors_path_for_gtf(gtf_path)
+def write_output(gtf_path, rows, exclusions, output_file_prefix=None):
+    output_path = output_path_for_gtf(gtf_path, output_file_prefix)
+    errors_path = errors_path_for_gtf(gtf_path, output_file_prefix)
 
     def write_tsv(output_file):
         writer = csv.writer(output_file, delimiter="\t", lineterminator="\n")
@@ -420,14 +441,24 @@ def main():
         type=Path,
         help="Input Ensembl .gtf.gz annotation file",
     )
+    parser.add_argument(
+        "-o",
+        "--output_file_prefix",
+        type=Path,
+        help=(
+            "Output path prefix; .canonical_transcripts.tsv and .errors.txt "
+            "are appended"
+        ),
+    )
     args = parser.parse_args()
     if not args.gtf.is_file():
         parser.error(f"GTF file does not exist: {args.gtf}")
 
     try:
-        output_path = output_path_for_gtf(args.gtf)
         canonical_count, rows, exclusions = build_rows(args.gtf)
-        output_path, errors_path = write_output(args.gtf, rows, exclusions)
+        output_path, errors_path = write_output(
+            args.gtf, rows, exclusions, args.output_file_prefix
+        )
     except (GTFFormatError, OSError, UnicodeError, ValueError) as error:
         parser.error(f"Could not process GTF {args.gtf}: {error}")
 
