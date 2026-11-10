@@ -77,11 +77,8 @@ transcript.
 python scripts/mammals/02_identify_orthologous_genes.py
 ```
 
-Reads `gene_id` and `gene_name` from `01_Homo_sapiens.canonical_transcripts.tsv`;
-writes one row per human gene to `03_human_orthologs.tsv`. It queries Ensembl
-Compara for the nine other species with Ensembl 116 GTFs, caches responses in
-`data/mammals/.cache/`, and retains multiple orthologs in semicolon-separated
-fields. Use `--input`, `--output`, or `--cache-dir` to override paths.
+Reads human gene IDs from the canonical transcript table and writes Ensembl
+Compara orthologs for the nine target species to `03_human_orthologs.tsv`.
 
 The analysis identifies orthologous genes across these species, retrieves
 annotated transcripts, and extracts transcript-oriented 50-nt windows
