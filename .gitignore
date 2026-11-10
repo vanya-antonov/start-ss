@@ -16,3 +16,4 @@ data/human/02_mane_transcripts.gb.gz
 # Manually downloaded mammalian Ensembl annotations
 data/mammals/*.gtf.gz
 data/mammals/*.errors.txt
+data/mammals/.cache/
