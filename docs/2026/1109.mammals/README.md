@@ -37,9 +37,9 @@ wget -O data/mammals/ensembl_compara_homologies.tsv.gz https://ftp.ensembl.org/p
 
 The TSV contains gene-level Compara relationships, including orthology type,
 Ensembl gene IDs, sequence identity, and whole-genome alignment coverage. It
-is intended as the local input for Step 3, avoiding one REST request per gene.
+is intended as the local input for Step 2, avoiding one REST request per gene.
 
-### Step 1. Download Ensembl GTF annotations
+Download the Ensembl 116 GTF annotations from the repository root:
 
 Run from the repository root:
 
@@ -58,7 +58,7 @@ wget -P data/mammals https://ftp.ensembl.org/pub/current/gtf/callithrix_jacchus/
 
 Ensembl 116 does not provide GTFs here for killer whale, manatee, or aardvark.
 
-### Step 2. Extract canonical transcripts and CDS coordinates
+### Step 1. Extract canonical transcripts and CDS coordinates
 
 Run the parser once for each downloaded annotation:
 
@@ -83,7 +83,7 @@ The table includes versioned IDs,
 transcript and CDS lengths, and CDS coordinates relative to the spliced
 transcript.
 
-### Step 3. Identify human orthologs
+### Step 2. Identify human orthologs
 
 ```bash
 python scripts/mammals/02_identify_orthologous_genes.py
@@ -92,7 +92,7 @@ python scripts/mammals/02_identify_orthologous_genes.py
 Reads `gene_id` and `gene_name` from `01_Homo_sapiens.canonical_transcripts.tsv`
 and writes one row per human gene to `03_human_orthologs.tsv`. The current
 script still queries the REST API and does not yet read the local TSV; that
-integration is needed for Step 3 to avoid individual API requests.
+integration is needed for Step 2 to avoid individual API requests.
 
 The analysis identifies orthologous genes across these species, retrieves
 annotated transcripts, and extracts transcript-oriented 50-nt windows
