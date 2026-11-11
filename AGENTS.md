@@ -16,6 +16,10 @@ local structure and initiation, and associations with translation efficiency.
   `data/mammals/`. Mammalian results may later be stored under
   `results/mammals/`.
 - Research documentation is organized by dated folders under `docs/2026/`.
+- Standalone, dated research experiments belong under `work/`; keep each
+  experiment's scripts, README, raw data, and results together in its own
+  subdirectory. Do not move experiment-specific files into shared pipeline
+  directories unless the task explicitly calls for it.
 - No shared `constants.py` or mammalian scripts exist yet. Do not assume the
   planned mammalian workflow has been implemented.
 - `django/` is a generated Django project scaffold; keep research analysis
@@ -69,3 +73,6 @@ local structure and initiation, and associations with translation efficiency.
   considered, versions, and expected effect on interpretation.
 - Report sample selection, exclusions, parameters, and limitations with each
   result so analyses can be reviewed and repeated.
+- README files under `work/` must be short: include a brief introduction, the
+  commands needed to execute the workflow, and one or two lines explaining
+  each output column.
