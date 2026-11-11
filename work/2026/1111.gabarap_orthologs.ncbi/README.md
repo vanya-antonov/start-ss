@@ -32,11 +32,10 @@ Writes `01_GABARAP_ncbi_orthologs.tsv` beside the script.
 ### Step 2: Add Ensembl gene IDs
 
 ```sh
-python work/2026/1111.gabarap_orthologs.ncbi/02_add_ensembl_gene_ids.py \
-    work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv
+python work/2026/1111.gabarap_orthologs.ncbi/02_add_ensembl_gene_ids.py GABARAP
 ```
 
-Maps each row by `(taxon_id, ortholog_gene_id)` and writes the sibling
-`02_GABARAP_ncbi_orthologs.tsv`. The appended `ensembl_gene_id` column contains
-all distinct matching Ensembl Gene IDs separated by semicolons, or is empty
-when no mapping exists.
+The gene name selects `01_GABARAP_ncbi_orthologs.tsv` beside the script. The
+script maps rows by `(taxon_id, ortholog_gene_id)` and writes
+`02_GABARAP_ncbi_orthologs.tsv`; `ensembl_gene_id` contains distinct matches
+separated by semicolons, or is empty when no mapping exists.

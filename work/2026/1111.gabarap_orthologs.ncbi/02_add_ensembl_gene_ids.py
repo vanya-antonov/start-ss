@@ -148,6 +148,14 @@ def automatic_output_path(input_path: Path) -> Path:
     return input_path.with_name("02_" + input_path.name[3:])
 
 
+def input_path_for_gene(gene_name: str) -> Path:
+    """Return the Step 1 table path for the requested gene name."""
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", gene_name.strip()).strip("._-")
+    if not safe_name:
+        raise ValueError("Gene name must contain at least one filename-safe character")
+    return EXPERIMENT_DIR / f"01_{safe_name}_ncbi_orthologs.tsv"
+
+
 def write_output_table(
     output_path: Path, input_columns: list[str], rows: list[dict[str, str]]
 ) -> None:
@@ -184,12 +192,12 @@ def process_table(input_path: Path) -> Path:
 
 
 def main() -> int:
-    """Parse the input path and run local Ensembl ID mapping."""
+    """Parse the gene name and run local Ensembl ID mapping."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input_tsv", type=Path, help="Step 1 ortholog TSV")
+    parser.add_argument("gene_name", help="Gene name used in the Step 1 TSV filename")
     args = parser.parse_args()
-    input_path = args.input_tsv.expanduser()
     try:
+        input_path = input_path_for_gene(args.gene_name)
         process_table(input_path)
     except (OSError, ValueError, csv.Error) as error:
         LOG.error("Could not map Ensembl gene IDs: %s", error)
