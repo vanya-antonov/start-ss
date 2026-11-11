@@ -42,6 +42,8 @@ separated by semicolons, or `-` when no mapping exists.
 
 ### Step 3: Retrieve Ensembl canonical transcript IDs
 
+ERROR: transcript for Bos Taurus exsts at https://www.ensembl.org/feature-explorer/GCA_002263795.4/gene:ENSBTAG00070016799?view=transcripts_table but the script does not find it.
+
 ```sh
 python work/2026/1111.gabarap_orthologs.ncbi/03_add_ensembl_canonical_transcript_ids.py GABARAP
 ```
