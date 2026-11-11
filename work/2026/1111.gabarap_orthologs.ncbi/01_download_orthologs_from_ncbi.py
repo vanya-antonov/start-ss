@@ -247,19 +247,40 @@ def main() -> int:
     """Run symbol resolution, ortholog retrieval, and table creation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("gene_symbol", help="Human gene symbol, for example GABARAP")
+    parser.add_argument(
+        "output_file",
+        nargs="?",
+        help=(
+            "optional output TSV path; relative paths are resolved from the "
+            "current working directory"
+        ),
+    )
     args = parser.parse_args()
     symbol = args.gene_symbol.strip()
     if not symbol:
         parser.error("gene symbol cannot be empty")
 
     data_dir = EXPERIMENT_DIR / "data"
-    results_dir = EXPERIMENT_DIR / "results"
     data_dir.mkdir(parents=True, exist_ok=True)
     client = NCBIClient(data_dir)
     try:
         human_gene = resolve_human_gene(client, symbol)
         rows = collect_ortholog_rows(client, human_gene, symbol)
-        output_path = results_dir / f"{safe_filename(symbol)}_ncbi_orthologs.tsv"
+        if args.output_file:
+            output_path = Path(args.output_file).expanduser()
+            if not output_path.is_absolute():
+                output_path = Path.cwd() / output_path
+        else:
+            # Use the invocation directory: when launched by basename this is
+            # the current directory; when launched with a path, use that
+            # script's containing directory.
+            invoked_script = Path(sys.argv[0])
+            results_dir = (
+                invoked_script.resolve().parent
+                if invoked_script.parent != Path(".")
+                else Path.cwd()
+            )
+            output_path = results_dir / f"{safe_filename(symbol)}_ncbi_orthologs.tsv"
         write_table(output_path, rows)
     except (NCBIRequestError, ValueError, OSError, json.JSONDecodeError) as error:
         LOG.error("Analysis stopped: %s", error)

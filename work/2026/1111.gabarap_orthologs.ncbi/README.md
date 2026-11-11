@@ -61,25 +61,33 @@ The reference is *Homo sapiens*, taxon ID 9606, and is not a target.
 
 ## Usage and reproducibility
 
-From the repository root, run:
+Run either command below. If the optional second argument is omitted, the table
+is written to `{SYMBOL}_ncbi_orthologs.tsv` in the script's invocation
+directory: when launched by script path, that is the script's folder; when
+launched by basename from its folder, it is the current directory (`.`). If an
+output path is provided, it is resolved from the current working directory
+when relative, and its parent directory is created automatically.
 
 ```sh
 python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py GABARAP
+python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py GABARAP work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv
 ```
 
-The input symbol determines the output basename. For another gene, replace
-`GABARAP` with its human symbol. The script uses only the Python standard
-library and the repository's shared mammalian species constants. It records the
-retrieval date in its console output; rerun the command to reproduce the
-request using the current NCBI records. The raw JSON snapshots in `data/` make
-the API inputs to the processed table inspectable and are reused on subsequent
-runs.
+When the second argument is given, it determines the output file path. For
+another gene, replace `GABARAP` with its human symbol and choose the desired
+output path. The script uses only the Python standard library and the
+repository's shared mammalian species constants. It records the retrieval date
+in its console output; rerun the command to reproduce the request using the
+current NCBI records. The raw JSON snapshots in `data/` make the API inputs to
+the processed table inspectable and are reused on subsequent runs.
 
 ## Output
 
-The processed table is written to
-`results/{SYMBOL}_ncbi_orthologs.tsv`, one row per returned ortholog. There are
-no placeholder rows for target species lacking an NCBI ortholog record.
+By default, the processed table is written to
+`{SYMBOL}_ncbi_orthologs.tsv` in the script's invocation directory; with the
+optional second argument, it is written to the supplied path. It contains one
+row per returned ortholog. There are no placeholder rows for target species
+lacking an NCBI ortholog record.
 
 | Column | Meaning |
 | --- | --- |
