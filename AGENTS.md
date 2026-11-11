@@ -68,9 +68,10 @@ local structure and initiation, and associations with translation efficiency.
 
 ## Decisions and reporting
 
-- Document consequential scientific and technical choices close to the
-  analysis (README or a short methods/decision note): rationale, alternatives
-  considered, versions, and expected effect on interpretation.
-- Report sample selection, exclusions, parameters, and limitations with each
-  result so analyses can be reviewed and repeated.
-- README files under `work/` must be short: include a brief introduction, optional Downloads section and a section with commands needed to execute the workflow (+ one or two optional lines explaining each command). Create subheader/section for each script starting with Step 1, Step 2 etc.
+- Document consequential scientific and technical choices close to the analysis (in `README.md` or a short methods/decision note). Include the rationale, alternatives considered, software versions, and expected effects on interpretation.
+- Report sample selection, exclusions, parameters, and limitations alongside each result so that analyses can be reviewed and reproduced.
+- README files under `work/` must be concise and include the following sections:
+  - **Introduction** — a brief description of the analysis and its objective.
+  - **Downloads** *(optional)* — all downloads required to execute the workflow scripts.
+  - **Workflow** — commands required to execute the workflow, with one or two optional explanatory lines for each command.
+    - Create a separate subsection for each script, numbered sequentially: `Step 1`, `Step 2`, etc.
