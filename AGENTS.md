@@ -73,4 +73,4 @@ local structure and initiation, and associations with translation efficiency.
   considered, versions, and expected effect on interpretation.
 - Report sample selection, exclusions, parameters, and limitations with each
   result so analyses can be reviewed and repeated.
-- README files under `work/` must be short: include a brief introduction, the commands needed to execute the workflow, and, optionally, one or two lines explaining each command. Create subheader/section for each script starting with Step 1, Step 2 etc.
+- README files under `work/` must be short: include a brief introduction, optional Downloads section and a section with commands needed to execute the workflow (+ one or two optional lines explaining each command). Create subheader/section for each script starting with Step 1, Step 2 etc.
