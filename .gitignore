@@ -10,13 +10,16 @@ __pycache__/
 db.sqlite3
 db.sqlite3-journal
 
-# Downloaded human transcript records
+# Large files
+data/large_files
 data/human/02_mane_transcripts.gb.gz
 
 # Manually downloaded mammalian Ensembl annotations
 data/mammals/*.gtf.gz
 data/mammals/*.errors.txt
 data/mammals/.cache/
+
+
 
 # Ignores for work folder
 work/**/*.json
