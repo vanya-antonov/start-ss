@@ -216,7 +216,10 @@ def write_table(path: Path, rows: list[dict[str, str]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as output_file:
         writer = csv.DictWriter(output_file, fieldnames=OUTPUT_COLUMNS, delimiter="\t")
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(
+            {column: row.get(column) or "-" for column in OUTPUT_COLUMNS}
+            for row in rows
+        )
 
 
 def main() -> int:

@@ -134,7 +134,7 @@ def annotate_rows(
         taxon_id = (row.get("taxon_id") or "").strip()
         gene_id = (row.get("ortholog_gene_id") or "").strip()
         ids = sorted(mappings.get((taxon_id, gene_id), set()))
-        row[OUTPUT_COLUMN] = ";".join(ids)
+        row[OUTPUT_COLUMN] = ";".join(ids) or "-"
 
     return single_count, multiple_count, missing_count
 
@@ -169,7 +169,10 @@ def write_output_table(
             output_file, fieldnames=columns, delimiter="\t", extrasaction="ignore"
         )
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(
+            {column: row.get(column) or "-" for column in columns}
+            for row in rows
+        )
 
 
 def process_table(input_path: Path) -> Path:

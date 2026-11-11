@@ -195,7 +195,10 @@ def write_output_table(
     with output_path.open("w", encoding="utf-8", newline="") as output_file:
         writer = csv.DictWriter(output_file, fieldnames=columns, delimiter="\t", extrasaction="ignore")
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(
+            {column: row.get(column) or "-" for column in columns}
+            for row in rows
+        )
 
 
 def process_gene_table(gene_symbol: str, input_path: Path, output_path: Path) -> int:
@@ -253,7 +256,10 @@ def process_gene_table(gene_symbol: str, input_path: Path, output_path: Path) ->
             canonical_by_gene.get(gene_id.strip(), "")
             for gene_id in split_ensembl_ids(row.get("ensembl_gene_id") or "")
         ]
-        row[OUTPUT_COLUMN] = ";".join(dict.fromkeys(transcript_id for transcript_id in ids if transcript_id))
+        row[OUTPUT_COLUMN] = (
+            ";".join(dict.fromkeys(transcript_id for transcript_id in ids if transcript_id))
+            or "-"
+        )
 
     print(f"Writing output TSV ({len(rows)} rows)...", flush=True)
     write_output_table(output_path, input_columns, rows)
