@@ -1,13 +1,14 @@
-# NCBI ortholog and transcript workflow
+# NCBI ortholog and Ensembl ID workflow
 
-## Introduction
-
-Retrieves NCBI orthologs for a human gene and selects each gene's longest
-annotated protein-coding transcript.
+Retrieves NCBI orthologs for a human gene and maps target NCBI Gene IDs to
+Ensembl Gene IDs using NCBI's local mapping file.
 
 ## Downloads
 
-From this experiment directory, download the gzip-compressed NCBI mapping file:
+From the repository root, download the gzip-compressed mapping file to
+`data/large_files/ncbi/gene2ensembl.gz`. It includes NCBI Gene-to-Ensembl Gene
+mappings and transcript/protein accession mappings; this large file is kept
+locally for reuse.
 
 ```sh
 mkdir -p data/large_files/ncbi
@@ -15,10 +16,6 @@ mkdir -p data/large_files/ncbi
 wget -O data/large_files/ncbi/gene2ensembl.gz \
     https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz
 ```
-
-This relatively large file maps NCBI Gene IDs to Ensembl Gene IDs and includes
-transcript and protein accession mappings. It is stored locally for reuse in
-NCBI-to-Ensembl ID conversion.
 
 ## Workflow
 
@@ -32,10 +29,14 @@ python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py 
 
 Writes `01_GABARAP_ncbi_orthologs.tsv` beside the script.
 
-### Step 2: Add longest-protein transcript
+### Step 2: Add Ensembl gene IDs
 
 ```sh
-python work/2026/1111.gabarap_orthologs.ncbi/02_add_transcript_with_longest_protein.py work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv
+python work/2026/1111.gabarap_orthologs.ncbi/02_add_ensembl_gene_ids.py \
+    work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv
 ```
 
-Reads the Step 1 table and writes a `02_`-prefixed TSV beside the input.
+Maps each row by `(taxon_id, ortholog_gene_id)` and writes the sibling
+`02_GABARAP_ncbi_orthologs.tsv`. The appended `ensembl_gene_id` column contains
+all distinct matching Ensembl Gene IDs separated by semicolons, or is empty
+when no mapping exists.
