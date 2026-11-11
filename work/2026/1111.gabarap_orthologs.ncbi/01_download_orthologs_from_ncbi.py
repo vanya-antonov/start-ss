@@ -10,7 +10,6 @@ import logging
 import re
 import sys
 import time
-from datetime import date
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -25,21 +24,7 @@ from constants import SPECIES_DICT  # noqa: E402
 
 
 API_ROOT = "https://api.ncbi.nlm.nih.gov/datasets/v2"
-HUMAN_TAXON_ID = 9606
-TAXON_IDS = {
-    "mouse": 10090,
-    "whale": 9733,
-    "cow": 9913,
-    "sheep": 9940,
-    "panda": 9646,
-    "manatee": 127582,
-    "elephant": 9785,
-    "dog": 9615,
-    "aardvark": 9818,
-    "horse": 9796,
-    "rabbit": 9986,
-    "marmoset": 9483,
-}
+HUMAN_TAXON_ID = SPECIES_DICT["human"]["ncbi_taxon_id"]
 REQUEST_INTERVAL_SECONDS = 0.21  # 5 requests/s, NCBI's default limit.
 MAX_ATTEMPTS = 5
 TIMEOUT_SECONDS = 60
@@ -120,12 +105,16 @@ class NCBIClient:
 def configured_targets() -> list[tuple[str, str, int]]:
     """Return configured nonhuman species and taxonomy IDs in project order."""
     targets = []
-    for key, details in SPECIES_DICT.items():
+    ordered_species = sorted(
+        SPECIES_DICT.items(), key=lambda item: item[1]["order"]
+    )
+    for key, details in ordered_species:
         if key == "human":
             continue
-        if key not in TAXON_IDS:
+        taxon_id = details.get("ncbi_taxon_id")
+        if not taxon_id:
             raise ValueError(f"No NCBI taxonomy ID configured for species key {key!r}")
-        targets.append((key, details["species"], TAXON_IDS[key]))
+        targets.append((key, details["species"], taxon_id))
     return targets
 
 
@@ -201,12 +190,12 @@ def resolve_human_gene(client: NCBIClient, symbol: str) -> dict[str, str]:
 def collect_ortholog_rows(
     client: NCBIClient, human_gene: dict[str, str], symbol: str
 ) -> list[dict[str, str]]:
-    """Retrieve the all-taxa ortholog report, then select configured taxon IDs."""
+    """Retrieve orthologs and emit at least one row per configured species."""
     endpoint = f"/gene/id/{quote(human_gene['gene_id'], safe='')}/orthologs"
     payload = client.get_json(endpoint, f"orthologs_{human_gene['gene_id']}")
     reports = reports_from_response(payload)
     targets = {str(taxon_id): (label, taxon_id) for _, label, taxon_id in configured_targets()}
-    rows = []
+    rows_by_taxon: dict[str, list[dict[str, str]]] = {taxon: [] for taxon in targets}
     for report in reports:
         fields = gene_fields(report)
         if fields["tax_id"] not in targets:
@@ -215,7 +204,7 @@ def collect_ortholog_rows(
         if not fields["gene_id"]:
             LOG.warning("Skipping ortholog report without GeneID for taxon %s", taxon_id)
             continue
-        rows.append({
+        rows_by_taxon[fields["tax_id"]].append({
             "human_gene_symbol": symbol,
             "human_gene_id": human_gene["gene_id"],
             "species": species,
@@ -226,6 +215,24 @@ def collect_ortholog_rows(
             "ortholog_type": fields["ortholog_type"],
             "refseq_accession": fields["refseq_accession"],
         })
+
+    rows = []
+    for taxon, (species, taxon_id) in targets.items():
+        species_rows = rows_by_taxon[taxon]
+        if species_rows:
+            rows.extend(species_rows)
+        else:
+            rows.append({
+                "human_gene_symbol": symbol,
+                "human_gene_id": human_gene["gene_id"],
+                "species": species,
+                "taxon_id": str(taxon_id),
+                "ortholog_gene_id": "-",
+                "ortholog_gene_symbol": "-",
+                "ortholog_description": "-",
+                "ortholog_type": "-",
+                "refseq_accession": "-",
+            })
     return rows
 
 
@@ -287,8 +294,16 @@ def main() -> int:
         return 1
 
     print(f"Human {symbol} GeneID: {human_gene['gene_id']}")
-    print(f"Wrote {len(rows)} ortholog row(s) to {output_path}")
-    print(f"Retrieval date: {date.today().isoformat()}")
+    found_species = sum(
+        1 for row in rows
+        if row["ortholog_gene_id"] != "-"
+    )
+    configured_species = len(configured_targets())
+    print(
+        f"Found {found_species} ortholog record(s) across "
+        f"{configured_species} target species."
+    )
+    print(f"Saved {output_path}")
     return 0
 
 

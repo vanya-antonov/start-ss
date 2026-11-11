@@ -18,5 +18,6 @@ python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py 
 ```
 
 The optional second argument specifies the output TSV path; relative paths are
-resolved from the current directory. The table contains one row per returned
-ortholog matched by NCBI taxonomy ID.
+resolved from the current directory. The table includes all 12 configured
+species, preserves multiple orthologs as separate rows, and uses `-` for
+ortholog fields when none is found for a species.
