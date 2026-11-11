@@ -42,17 +42,19 @@ separated by semicolons, or `-` when no mapping exists.
 
 ### Step 3: Retrieve Ensembl canonical transcript IDs
 
-ERROR: transcript for Bos Taurus exsts at https://www.ensembl.org/feature-explorer/GCA_002263795.4/gene:ENSBTAG00070016799?view=transcripts_table but the script does not find it.
-
 ```sh
 python work/2026/1111.gabarap_orthologs.ncbi/03_add_ensembl_canonical_transcript_ids.py GABARAP
 ```
 
 Reads `02_GABARAP_ncbi_orthologs.tsv` and writes `03_GABARAP_ncbi_orthologs.tsv`.
-It queries Ensembl's `GET /lookup/id/{id}?expand=0` endpoint by each distinct
-`ensembl_gene_id` and uses Ensembl's `canonical_transcript` designation as
-returned, rather than selecting a transcript by length. Raw responses are
-cached per gene ID under `data/ensembl_lookup_cache/`;
-`ensembl_canonical_transcript_id` is `-` when no canonical transcript is
-available. Canonical transcript availability depends on
-Ensembl's current annotation and may be absent for some genes.
+It queries `GET /lookup/symbol/{ensembl_species_name}/{ortholog_gene_symbol}?expand=1`,
+using `ensembl_species_name` from `scripts/mammals/constants.py`. A matching
+case-insensitive `display_name` validates the response; top-level `id` and
+`canonical_transcript` populate `ensembl_gene_id_resolved` and
+`ensembl_canonical_transcript_id` (including transcript version). The original
+NCBI-derived `ensembl_gene_id` is preserved. `ensembl_lookup_method` records
+`symbol` for accepted lookups; `ensembl_api_error` records HTTP, connection,
+JSON, symbol-validation, or unavailable-species errors. A missing canonical
+transcript is `-` and does not count as an API error; HTTP 404 is reported as
+gene not found. Raw responses are cached by species and symbol under
+`data/ensembl_symbol_lookup_cache/`.
