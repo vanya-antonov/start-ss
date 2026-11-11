@@ -355,13 +355,45 @@ def process_gene_table(gene_symbol: str, input_path: Path, output_path: Path) ->
 
     client = EnsemblClient(CACHE_DIR)
     results: dict[tuple[str, str, str], LookupResult] = {}
-    for row, (species, ensembl_species_name) in zip(rows, row_species):
+    unique_lookup_keys = {
+        (species, ensembl_name, (row.get("ortholog_gene_symbol") or "").strip())
+        for row, (species, ensembl_name) in zip(rows, row_species)
+        if (row.get("ortholog_gene_symbol") or "").strip() not in {"", "-"}
+    }
+    total_lookups = len(unique_lookup_keys)
+    lookup_number = 0
+
+    for row_number, (row, (species, ensembl_species_name)) in enumerate(
+        zip(rows, row_species), start=1
+    ):
         ortholog_symbol = (row.get("ortholog_gene_symbol") or "").strip()
         if not ortholog_symbol or ortholog_symbol == "-":
+            print(
+                f"[{row_number}/{len(rows)}] {species}: no ortholog symbol; "
+                "skipping Ensembl lookup.",
+                flush=True,
+            )
             continue
         key = (species, ensembl_species_name, ortholog_symbol)
         if key in results:
+            result = results[key]
+            print(
+                f"[{row_number}/{len(rows)}] {species} | {ortholog_symbol}: "
+                f"duplicate lookup; reusing status={result.category}, "
+                f"resolved_gene_id={result.resolved_gene_id}, "
+                f"canonical_transcript_id={result.canonical_transcript_id}.",
+                flush=True,
+            )
             continue
+        lookup_number += 1
+        ncbi_gene_id = (row.get("ortholog_gene_id") or "-").strip() or "-"
+        print(
+            f"[{lookup_number}/{total_lookups}] Starting lookup: "
+            f"species={species}; ortholog_symbol={ortholog_symbol}; "
+            f"NCBI_gene_id={ncbi_gene_id}; "
+            f"ensembl_species_name={ensembl_species_name or '-'}",
+            flush=True,
+        )
         if not ensembl_species_name or ensembl_species_name == "-":
             results[key] = LookupResult(
                 api_error=(
@@ -369,8 +401,22 @@ def process_gene_table(gene_symbol: str, input_path: Path, output_path: Path) ->
                 ),
                 category="other_error",
             )
-            continue
-        results[key] = lookup_result(client, ensembl_species_name, ortholog_symbol)
+        else:
+            print("  Checking cache or querying Ensembl REST...", flush=True)
+            results[key] = lookup_result(client, ensembl_species_name, ortholog_symbol)
+        result = results[key]
+        if not ensembl_species_name or ensembl_species_name == "-":
+            source = "configuration"
+        else:
+            source = "cache" if result.from_cache else "Ensembl REST"
+        print(
+            f"  Completed via {source}: status={result.category}; "
+            f"resolved_gene_id={result.resolved_gene_id}; "
+            f"canonical_transcript_id={result.canonical_transcript_id}",
+            flush=True,
+        )
+        if result.api_error != "-":
+            print(f"  Error: {result.api_error}", flush=True)
 
     counts = {
         "success": 0,
@@ -380,7 +426,7 @@ def process_gene_table(gene_symbol: str, input_path: Path, output_path: Path) ->
         "validation_error": 0,
     }
     cache_count = 0
-    for (species_label, _, ortholog_symbol), result in results.items():
+    for result in results.values():
         if result.category == "success":
             counts["success"] += 1
             if result.canonical_transcript_id == "-":
@@ -388,13 +434,6 @@ def process_gene_table(gene_symbol: str, input_path: Path, output_path: Path) ->
         else:
             counts[result.category] += 1
         cache_count += int(result.from_cache)
-        print(
-            f"{species_label} | {ortholog_symbol}: "
-            f"resolved_gene_id={result.resolved_gene_id}; "
-            f"canonical_transcript_id={result.canonical_transcript_id}; "
-            f"status={result.category}; error={result.api_error}",
-            flush=True,
-        )
 
     for row, (species, ensembl_species_name) in zip(rows, row_species):
         ortholog_symbol = (row.get("ortholog_gene_symbol") or "").strip()
