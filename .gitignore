@@ -17,3 +17,6 @@ data/human/02_mane_transcripts.gb.gz
 data/mammals/*.gtf.gz
 data/mammals/*.errors.txt
 data/mammals/.cache/
+
+# Ignores for work folder
+work/**/*.json
