@@ -37,7 +37,6 @@ OUTPUT_COLUMNS = [
     "ortholog_gene_id",
     "ortholog_gene_symbol",
     "ortholog_type",
-    "refseq_accession",
 ]
 
 
@@ -139,32 +138,8 @@ def gene_fields(report: dict[str, Any]) -> dict[str, str]:
         "gene_id": str(gene_id),
         "symbol": str(symbol),
         "tax_id": str(tax),
-        "refseq_accession": refseq_accession(report),
         "ortholog_type": str(report.get("ortholog_type") or report.get("type") or ""),
     }
-
-
-def refseq_accession(report: dict[str, Any]) -> str:
-    """Choose an available RefSeq accession from common gene-report fields."""
-    for key in ("refseq_accession", "refseq", "rna_accession"):
-        value = report.get(key)
-        if isinstance(value, str):
-            return value
-        if isinstance(value, list):
-            for item in value:
-                if isinstance(item, str) and item.startswith(("NM_", "NR_", "XM_", "XR_")):
-                    return item
-                if isinstance(item, dict):
-                    accession = item.get("accession_version") or item.get("accession")
-                    if accession:
-                        return str(accession)
-    products = report.get("transcripts") or report.get("gene_products") or []
-    for product in products:
-        if isinstance(product, dict):
-            accession = product.get("accession_version") or product.get("accession")
-            if accession and str(accession).startswith(("NM_", "NR_", "XM_", "XR_")):
-                return str(accession)
-    return ""
 
 
 def resolve_human_gene(client: NCBIClient, symbol: str) -> dict[str, str]:
@@ -210,7 +185,6 @@ def collect_ortholog_rows(
             "ortholog_gene_id": fields["gene_id"] or "-",
             "ortholog_gene_symbol": fields["symbol"] or "-",
             "ortholog_type": fields["ortholog_type"] or "-",
-            "refseq_accession": fields["refseq_accession"] or "-",
         })
 
     rows = []
@@ -227,7 +201,6 @@ def collect_ortholog_rows(
                 "ortholog_gene_id": "-",
                 "ortholog_gene_symbol": "-",
                 "ortholog_type": "-",
-                "refseq_accession": "-",
             })
     return rows
 
