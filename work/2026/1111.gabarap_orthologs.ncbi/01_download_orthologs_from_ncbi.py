@@ -36,7 +36,6 @@ OUTPUT_COLUMNS = [
     "taxon_id",
     "ortholog_gene_id",
     "ortholog_gene_symbol",
-    "ortholog_description",
     "ortholog_type",
     "refseq_accession",
 ]
@@ -140,7 +139,6 @@ def gene_fields(report: dict[str, Any]) -> dict[str, str]:
         "gene_id": str(gene_id),
         "symbol": str(symbol),
         "tax_id": str(tax),
-        "description": str(report.get("description") or ""),
         "refseq_accession": refseq_accession(report),
         "ortholog_type": str(report.get("ortholog_type") or report.get("type") or ""),
     }
@@ -211,7 +209,6 @@ def collect_ortholog_rows(
             "taxon_id": str(taxon_id),
             "ortholog_gene_id": fields["gene_id"] or "-",
             "ortholog_gene_symbol": fields["symbol"] or "-",
-            "ortholog_description": fields["description"] or "-",
             "ortholog_type": fields["ortholog_type"] or "-",
             "refseq_accession": fields["refseq_accession"] or "-",
         })
@@ -229,7 +226,6 @@ def collect_ortholog_rows(
                 "taxon_id": str(taxon_id),
                 "ortholog_gene_id": "-",
                 "ortholog_gene_symbol": "-",
-                "ortholog_description": "-",
                 "ortholog_type": "-",
                 "refseq_accession": "-",
             })
@@ -278,16 +274,8 @@ def main() -> int:
             if not output_path.is_absolute():
                 output_path = Path.cwd() / output_path
         else:
-            # Use the invocation directory: when launched by basename this is
-            # the current directory; when launched with a path, use that
-            # script's containing directory.
-            invoked_script = Path(sys.argv[0])
-            results_dir = (
-                invoked_script.resolve().parent
-                if invoked_script.parent != Path(".")
-                else Path.cwd()
-            )
-            output_path = results_dir / f"{safe_filename(symbol)}_ncbi_orthologs.tsv"
+            results_dir = EXPERIMENT_DIR / "results"
+            output_path = results_dir / f"01_{safe_filename(symbol)}_ncbi_orthologs.tsv"
         write_table(output_path, rows)
     except (NCBIRequestError, ValueError, OSError, json.JSONDecodeError) as error:
         LOG.error("Analysis stopped: %s", error)

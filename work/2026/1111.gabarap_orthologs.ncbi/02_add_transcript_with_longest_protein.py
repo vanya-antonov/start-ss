@@ -213,7 +213,10 @@ def write_output_table(
     path: Path, input_columns: list[str], rows: list[dict[str, str]]
 ) -> None:
     """Write the original columns and appended transcript metadata."""
-    columns = input_columns + [name for name in TRANSCRIPT_COLUMNS if name not in input_columns]
+    columns = [name for name in input_columns if name != "ortholog_description"]
+    columns += [name for name in TRANSCRIPT_COLUMNS if name not in columns]
+    for row in rows:
+        row.pop("ortholog_description", None)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as output_file:
         writer = csv.DictWriter(output_file, fieldnames=columns, delimiter="\t", extrasaction="ignore")
