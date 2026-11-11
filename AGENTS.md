@@ -75,4 +75,4 @@ local structure and initiation, and associations with translation efficiency.
   result so analyses can be reviewed and repeated.
 - README files under `work/` must be short: include a brief introduction, the
   commands needed to execute the workflow, and one or two lines explaining
-  each output column. Create subheader/section for each script starting with Step 1, Step 2 etc
+  each output column. Create subheader/section for each script starting with Step 1, Step 2 etc. Do not include section "Output columns" or any other sections. All necessary info should be inside Step's sections only.
