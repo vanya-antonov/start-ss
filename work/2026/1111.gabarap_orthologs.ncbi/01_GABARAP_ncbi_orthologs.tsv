@@ -1,13 +1,13 @@
 human_gene_symbol	human_gene_id	species	taxon_id	ortholog_gene_id	ortholog_gene_symbol	ortholog_description	ortholog_type	refseq_accession
-GABARAP	11337	Mus musculus	10090	56486	Gabarap	gamma-aminobutyric acid receptor associated protein	PROTEIN_CODING	
-GABARAP	11337	Orcinus orca	9733	101274009	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Bos taurus	9913	327715	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Ovis aries	9940	101118285	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Ailuropoda melanoleuca	9646	100480510	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Trichechus manatus latirostris	127582	101359453	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Loxodonta africana	9785	100658035	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Canis lupus familiaris	9615	479479	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Orycteropus afer afer	9818	-	-	-	-	-
-GABARAP	11337	Equus caballus	9796	111775730	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Oryctolagus cuniculus	9986	100008883	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
-GABARAP	11337	Callithrix jacchus	9483	100404267	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	
+GABARAP	11337	Mus musculus	10090	56486	Gabarap	gamma-aminobutyric acid receptor associated protein	PROTEIN_CODING	-
+GABARAP	11337	Orcinus orca	9733	101274009	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Bos taurus	9913	327715	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Ovis aries	9940	101118285	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Ailuropoda melanoleuca	9646	100480510	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Trichechus manatus latirostris	127582	101359453	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Loxodonta africana	9785	100658035	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Canis lupus familiaris	9615	479479	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Orycteropus afer afer	1230840	103206790	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Equus caballus	9796	111775730	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Oryctolagus cuniculus	9986	100008883	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-
+GABARAP	11337	Callithrix jacchus	9483	100404267	GABARAP	GABA type A receptor-associated protein	PROTEIN_CODING	-

@@ -106,7 +106,7 @@ def configured_targets() -> list[tuple[str, str, int]]:
     """Return configured nonhuman species and taxonomy IDs in project order."""
     targets = []
     ordered_species = sorted(
-        SPECIES_DICT.items(), key=lambda item: item[1]["order"]
+        SPECIES_DICT.items(), key=lambda item: item[1]["sort_order"]
     )
     for key, details in ordered_species:
         if key == "human":
@@ -209,11 +209,11 @@ def collect_ortholog_rows(
             "human_gene_id": human_gene["gene_id"],
             "species": species,
             "taxon_id": str(taxon_id),
-            "ortholog_gene_id": fields["gene_id"],
-            "ortholog_gene_symbol": fields["symbol"],
-            "ortholog_description": fields["description"],
-            "ortholog_type": fields["ortholog_type"],
-            "refseq_accession": fields["refseq_accession"],
+            "ortholog_gene_id": fields["gene_id"] or "-",
+            "ortholog_gene_symbol": fields["symbol"] or "-",
+            "ortholog_description": fields["description"] or "-",
+            "ortholog_type": fields["ortholog_type"] or "-",
+            "refseq_accession": fields["refseq_accession"] or "-",
         })
 
     rows = []
@@ -294,13 +294,13 @@ def main() -> int:
         return 1
 
     print(f"Human {symbol} GeneID: {human_gene['gene_id']}")
-    found_species = sum(
+    found_orthologs = sum(
         1 for row in rows
         if row["ortholog_gene_id"] != "-"
     )
     configured_species = len(configured_targets())
     print(
-        f"Found {found_species} ortholog record(s) across "
+        f"Found {found_orthologs} ortholog record(s) across "
         f"{configured_species} target species."
     )
     print(f"Saved {output_path}")
