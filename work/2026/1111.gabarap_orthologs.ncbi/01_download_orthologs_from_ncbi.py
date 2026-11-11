@@ -274,8 +274,7 @@ def main() -> int:
             if not output_path.is_absolute():
                 output_path = Path.cwd() / output_path
         else:
-            results_dir = EXPERIMENT_DIR / "results"
-            output_path = results_dir / f"01_{safe_filename(symbol)}_ncbi_orthologs.tsv"
+            output_path = EXPERIMENT_DIR / f"01_{safe_filename(symbol)}_ncbi_orthologs.tsv"
         write_table(output_path, rows)
     except (NCBIRequestError, ValueError, OSError, json.JSONDecodeError) as error:
         LOG.error("Analysis stopped: %s", error)

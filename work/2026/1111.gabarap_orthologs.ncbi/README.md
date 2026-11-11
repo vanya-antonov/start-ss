@@ -7,11 +7,11 @@ annotated protein-coding transcript. Run commands from the repository root.
 
 ```sh
 python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py GABARAP
-python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py GABARAP work/2026/1111.gabarap_orthologs.ncbi/results/01_GABARAP_ncbi_orthologs.tsv
+python work/2026/1111.gabarap_orthologs.ncbi/01_download_orthologs_from_ncbi.py GABARAP work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv
 ```
 
-The first command writes `results/01_GABARAP_ncbi_orthologs.tsv` inside the
-experiment directory; the second sets an explicit output path.
+The first command writes `01_GABARAP_ncbi_orthologs.tsv` beside the script. The
+second sets an explicit output path.
 
 ## Step 2: Add longest-protein transcript
 
