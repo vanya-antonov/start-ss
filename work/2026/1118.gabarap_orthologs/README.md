@@ -34,9 +34,7 @@ ortholog results to Ensembl transcript annotations.
 
 ```sh
 mkdir -p data/large_files/ncbi
-
 cd data/large_files/ncbi
-
 wget https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz
 cd -
 ```
@@ -48,9 +46,7 @@ start/end coordinates in transcript coordinates.
 
 ```sh
 mkdir -p data/large_files/ensembl/gtf
-
 cd data/large_files/ensembl/gtf
-
 wget https://ftp.ensembl.org/pub/release-116/gtf/homo_sapiens/Homo_sapiens.GRCh38.116.gtf.gz
 wget https://ftp.ensembl.org/pub/release-116/gtf/mus_musculus/Mus_musculus.GRCm39.116.gtf.gz
 wget https://ftp.ensembl.org/pub/release-116/gtf/bos_taurus/Bos_taurus.ARS-UCD2.0.116.gtf.gz
@@ -72,9 +68,7 @@ using transcript IDs obtained from the GTF annotations.
 
 ```sh
 mkdir -p data/large_files/ensembl/cdna
-
 cd data/large_files/ensembl/cdna
-
 wget https://ftp.ensembl.org/pub/release-116/fasta/homo_sapiens/cdna/Homo_sapiens.GRCh38.cdna.all.fa.gz
 wget https://ftp.ensembl.org/pub/release-116/fasta/mus_musculus/cdna/Mus_musculus.GRCm39.cdna.all.fa.gz
 wget https://ftp.ensembl.org/pub/release-116/fasta/bos_taurus/cdna/Bos_taurus.ARS-UCD2.0.cdna.all.fa.gz
