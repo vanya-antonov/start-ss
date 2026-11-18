@@ -85,3 +85,11 @@ cd -
 The initial workflow covers ten species because Ensembl release 116 GTF
 annotations are not available in the current workflow for killer whale,
 manatee, and aardvark.
+
+## Workflow
+
+### Step 1. Prepare NCBI ortholog table
+
+Reuse the NCBI ortholog table generated in the previous analysis (`work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv`), retaining the nine species included in the current Ensembl workflow and adding species keys from `constants.py`.
+
+The resulting file is `01_GABARAP_ncbi_orthologs.tsv`.
