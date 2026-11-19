@@ -87,7 +87,7 @@ The resulting file is `01_GABARAP_ncbi_orthologs.tsv`.
 Match NCBI ortholog gene symbols against `gene_name` attributes in the Ensembl GTF annotations.
 
 ```sh
-python work/2026/1118.gabarap_orthologs/02_add_canonical_transcripts.py
+python work/2026/1118.gabarap_orthologs/02_add_canonical_transcripts.py GABARAP
 ```
 
 The resulting file is `02_GABARAP_ncbi_orthologs.tsv`.

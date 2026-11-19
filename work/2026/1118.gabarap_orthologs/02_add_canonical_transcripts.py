@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -13,8 +14,6 @@ from pathlib import Path
 
 EXPERIMENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = EXPERIMENT_DIR.parents[2]
-DEFAULT_INPUT = EXPERIMENT_DIR / "01_GABARAP_ncbi_orthologs.tsv"
-DEFAULT_OUTPUT = EXPERIMENT_DIR / "02_GABARAP_ncbi_orthologs.tsv"
 DEFAULT_GTF_DIR = PROJECT_ROOT / "data" / "large_files" / "ensembl" / "gtf"
 OUTPUT_COLUMNS = ("ensembl_gene", "ensembl_canonical_transcript")
 
@@ -232,6 +231,17 @@ def write_output(
         writer.writerows(rows)
 
 
+def automatic_paths(gene_name: str) -> tuple[Path, Path]:
+    """Build input and output paths from the required gene name."""
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", gene_name.strip()).strip("._-")
+    if not safe_name:
+        raise ValueError("Gene name must contain filename-safe characters")
+    return (
+        EXPERIMENT_DIR / f"01_{safe_name}_ncbi_orthologs.tsv",
+        EXPERIMENT_DIR / f"02_{safe_name}_ncbi_orthologs.tsv",
+    )
+
+
 def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
     """Resolve gene and canonical transcript IDs for every input row."""
     input_columns, rows = read_input_table(input_path)
@@ -324,17 +334,27 @@ def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
 def main() -> int:
     """Parse paths and add Ensembl IDs to the GABARAP ortholog table."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Input TSV")
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Output TSV")
+    parser.add_argument(
+        "gene_name",
+        help="Gene name used to select the experiment input/output filenames",
+    )
+    parser.add_argument("--input", type=Path, help="Override the input TSV path")
+    parser.add_argument("--output", type=Path, help="Override the output TSV path")
     parser.add_argument(
         "--gtf-dir",
         type=Path,
         default=DEFAULT_GTF_DIR,
         help="Directory with Ensembl 116 GTF files",
     )
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        return 2
     args = parser.parse_args()
     try:
-        return process_table(args.input, args.output, args.gtf_dir)
+        default_input, default_output = automatic_paths(args.gene_name)
+        input_path = args.input or default_input
+        output_path = args.output or default_output
+        return process_table(input_path, output_path, args.gtf_dir)
     except (OSError, UnicodeError, csv.Error, GTFFormatError, ValueError) as error:
         parser.error(f"Could not add canonical transcript IDs: {error}")
 
