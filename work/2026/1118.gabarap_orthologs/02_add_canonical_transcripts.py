@@ -228,7 +228,15 @@ def write_output(
             lineterminator="\n",
         )
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(
+            {
+                column: row.get(column)
+                if row.get(column) not in {None, ""}
+                else "-"
+                for column in columns
+            }
+            for row in rows
+        )
 
 
 def automatic_paths(gene_name: str) -> tuple[Path, Path]:
@@ -244,7 +252,9 @@ def automatic_paths(gene_name: str) -> tuple[Path, Path]:
 
 def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
     """Resolve gene and canonical transcript IDs for every input row."""
+    print("Reading NCBI ortholog table.", flush=True)
     input_columns, rows = read_input_table(input_path)
+    print(f"Input rows: {len(rows)}", flush=True)
     rows_by_species: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
         species_name = row["species_name"]
@@ -262,9 +272,25 @@ def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
             for row in species_rows
             if (row.get("ortholog_gene_symbol") or "") not in {"", "-"}
         }
-        print(f"Scanning {gtf_path} for {len(symbols)} gene symbol(s).", flush=True)
+        print(
+            f"Processing {species_name}: {len(species_rows)} row(s), "
+            f"{len(symbols)} unique symbol(s); scanning {gtf_path}.",
+            flush=True,
+        )
         genes_by_symbol, canonical_by_gene, transcript_biotypes = read_species_gtf(
             gtf_path, symbols
+        )
+        matched_symbol_count = sum(
+            bool(genes_by_symbol.get(symbol)) for symbol in symbols
+        )
+        canonical_record_count = sum(
+            len(transcripts) for transcripts in canonical_by_gene.values()
+        )
+        print(
+            f"GTF scan complete for {species_name}: "
+            f"{matched_symbol_count}/{len(symbols)} symbol(s) matched; "
+            f"{canonical_record_count} canonical transcript record(s) found.",
+            flush=True,
         )
 
         for row in species_rows:
@@ -272,9 +298,9 @@ def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
             matches = genes_by_symbol.get(symbol, {})
             gene_ids = set(matches)
             if not symbol or symbol == "-" or not gene_ids:
-                results[(species_name, symbol)] = ("", "", "missing")
+                results[(species_name, symbol)] = ("-", "-", "missing")
             elif len(gene_ids) > 1:
-                results[(species_name, symbol)] = ("", "", "ambiguous")
+                results[(species_name, symbol)] = ("-", "-", "ambiguous")
             else:
                 gene_id = next(iter(gene_ids))
                 candidate_transcripts = {
@@ -295,9 +321,17 @@ def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
                         "success",
                     )
                 elif len(candidate_transcripts) > 1:
-                    results[(species_name, symbol)] = (gene_id, "", "ambiguous_transcript")
+                    results[(species_name, symbol)] = (
+                        gene_id,
+                        "-",
+                        "ambiguous_transcript",
+                    )
                 else:
-                    results[(species_name, symbol)] = (gene_id, "", "missing_transcript")
+                    results[(species_name, symbol)] = (
+                        gene_id,
+                        "-",
+                        "missing_transcript",
+                    )
 
     counts = {
         "success": 0,
@@ -319,6 +353,7 @@ def process_table(input_path: Path, output_path: Path, gtf_dir: Path) -> int:
                 flush=True,
             )
 
+    print("Writing output table.", flush=True)
     write_output(output_path, input_columns, rows)
     print("\nAnalysis completed.", flush=True)
     print(f"Successful matches: {counts['success']}", flush=True)
