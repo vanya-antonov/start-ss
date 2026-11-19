@@ -27,19 +27,7 @@ The initial analysis will include these ten species:
 Run the commands from the repository root. Keep all downloaded reference files
 compressed and store them under `data/large_files/`.
 
-### 1. NCBI gene-to-Ensembl mapping
-
-`gene2ensembl.gz` maps NCBI Gene IDs to Ensembl Gene IDs. It will connect NCBI
-ortholog results to Ensembl transcript annotations.
-
-```sh
-mkdir -p data/large_files/ncbi
-cd data/large_files/ncbi
-wget https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz
-cd -
-```
-
-### 2. Ensembl GTF annotations
+### 1. Ensembl GTF annotations
 
 The GTF files will be used to extract canonical transcript IDs and CDS
 start/end coordinates in transcript coordinates.
@@ -60,7 +48,7 @@ wget https://ftp.ensembl.org/pub/release-116/gtf/callithrix_jacchus/Callithrix_j
 cd -
 ```
 
-### 3. Ensembl cDNA FASTA sequences
+### 2. Ensembl cDNA FASTA sequences
 
 The cDNA FASTA files contain spliced transcript sequences in transcript
 orientation. Canonical transcript sequences will be retrieved from these files
@@ -93,3 +81,13 @@ manatee, and aardvark.
 Reuse the NCBI ortholog table generated in the previous analysis (`work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv`), retaining the nine species included in the current Ensembl workflow and adding species keys from `constants.py`.
 
 The resulting file is `01_GABARAP_ncbi_orthologs.tsv`.
+
+### Step 2. Add Ensembl canonical transcript IDs
+
+Match NCBI ortholog gene symbols against `gene_name` attributes in the Ensembl GTF annotations.
+
+```sh
+python work/2026/1118.gabarap_orthologs/02_add_canonical_transcripts.py
+```
+
+The resulting file is `02_GABARAP_ncbi_orthologs.tsv`.

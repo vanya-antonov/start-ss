@@ -29,6 +29,22 @@ local structure and initiation, and associations with translation efficiency.
 - Do not commit raw or restricted datasets, credentials, or machine-specific
   paths. Record data source, release/version, and access terms.
 
+### Python scripts under `work/`
+
+- Use `argparse` for command-line argument parsing.
+- Each script must accept at least one required input argument.
+- When run without arguments, the script should print a short description of
+  its purpose and usage, including the required arguments, rather than a
+  lengthy traceback.
+- Scripts under `work/` must be run from the repository root using their
+  relative paths.
+
+Example:
+
+```sh
+python work/2026/1111.gabarap_orthologs.ncbi/02_some_script.py SOME_INPUT
+```
+
 ## Execution policy
 
 - Never execute scripts, Python files, shell commands, or other project
