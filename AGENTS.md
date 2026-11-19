@@ -9,21 +9,16 @@ local structure and initiation, and associations with translation efficiency.
 
 ## Repository structure
 
-- Human and mammalian analyses are separate pipelines.
-- The existing human scripts, data, and results remain under
-  `scripts/human/`, `data/human/`, and `results/human/`.
-- Planned mammalian scripts and data belong under `scripts/mammals/` and
-  `data/mammals/`. Mammalian results may later be stored under
-  `results/mammals/`.
-- Research documentation is organized by dated folders under `docs/2026/`.
 - Standalone, dated research experiments belong under `work/`; keep each
   experiment's scripts, README, raw data, and results together in its own
   subdirectory. Do not move experiment-specific files into shared pipeline
   directories unless the task explicitly calls for it.
-- No shared `constants.py` or mammalian scripts exist yet. Do not assume the
-  planned mammalian workflow has been implemented.
-- `django/` is a generated Django project scaffold; keep research analysis
-  separate from Django configuration and interfaces.
+- README files under `work/` must be concise and include the following sections:
+  - **Introduction** — a brief description of the analysis and its objective.
+  - **Downloads** *(optional)* — all downloads required to execute the workflow scripts.
+  - **Workflow** — commands required to execute the workflow, with one or two optional explanatory lines for each command.
+    - Create a separate subsection for each script, numbered sequentially: `Step 1`, `Step 2`, etc.  
+- Research documentation is organized by dated folders under `docs/2026/`.
 
 ## Development practices
 
@@ -65,13 +60,3 @@ local structure and initiation, and associations with translation efficiency.
 - For comparisons across transcript regions or species, define matched regions,
   controls, orthology/alignment criteria, and handling of missing data. Treat
   predicted structure as a model, and distinguish association from causation.
-
-## Decisions and reporting
-
-- Document consequential scientific and technical choices close to the analysis (in `README.md` or a short methods/decision note). Include the rationale, alternatives considered, software versions, and expected effects on interpretation.
-- Report sample selection, exclusions, parameters, and limitations alongside each result so that analyses can be reviewed and reproduced.
-- README files under `work/` must be concise and include the following sections:
-  - **Introduction** — a brief description of the analysis and its objective.
-  - **Downloads** *(optional)* — all downloads required to execute the workflow scripts.
-  - **Workflow** — commands required to execute the workflow, with one or two optional explanatory lines for each command.
-    - Create a separate subsection for each script, numbered sequentially: `Step 1`, `Step 2`, etc.
