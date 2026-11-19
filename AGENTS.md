@@ -29,15 +29,19 @@ local structure and initiation, and associations with translation efficiency.
 - Do not commit raw or restricted datasets, credentials, or machine-specific
   paths. Record data source, release/version, and access terms.
 
-### Python scripts under `work/`
+### Python scripts
 
 - Use `argparse` for command-line argument parsing.
 - Each script must accept at least one required input argument.
 - When run without arguments, the script should print a short description of
   its purpose and usage, including the required arguments, rather than a
   lengthy traceback.
+- Print informative progress messages to the terminal during execution,
+  including the current processing stage and relevant counts.
+- In output TSV files, use `-` instead of an empty string for missing values.
 - Scripts under `work/` must be run from the repository root using their
   relative paths.
+
 
 Example:
 
