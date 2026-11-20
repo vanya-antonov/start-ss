@@ -84,6 +84,25 @@ Activate the project analysis environment from the repository root:
 conda activate start-ss-scripts
 ```
 
+### Step 0. Preprocess Ensembl GTF files
+
+Convert each downloaded GTF into a TSV containing all canonical protein-coding transcripts, versioned gene, transcript, and protein IDs, and CDS coordinates relative to the spliced transcript.
+
+```sh
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Homo_sapiens.GRCh38.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Mus_musculus.GRCm39.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Bos_taurus.ARS-UCD2.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Ovis_aries.ARS-UI_Ramb_v3.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Ailuropoda_melanoleuca.ASM200744v2.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Loxodonta_africana.loxAfr3.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Canis_lupus_familiaris.ROS_Cfam_1.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Equus_caballus.EquCab3.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Oryctolagus_cuniculus.OryCun2.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Callithrix_jacchus.mCalJac1.pat.X.116.gtf.gz
+```
+
+Output TSVs are written directly to `data/large_files/`. Subsequent workflow steps can use these preprocessed tables instead of repeatedly parsing the GTF files.
+
 ### Step 1. Prepare NCBI ortholog table
 
 Reuse the NCBI ortholog table generated in the previous analysis (`work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv`), retaining the nine species included in the current Ensembl workflow and adding species keys from `constants.py`.
