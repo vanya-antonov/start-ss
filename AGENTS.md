@@ -16,9 +16,8 @@ local structure and initiation, and associations with translation efficiency.
 - README files under `work/` must be concise and include the following sections:
   - **Introduction** — a brief description of the analysis and its objective.
   - **Downloads** *(optional)* — all downloads required to execute the workflow scripts.
-  - **Workflow** — commands required to execute the workflow, with one or two optional explanatory lines for each command.
+  - **Workflow** — commands required to execute the workflow, with one or two optional explanatory lines for each command. Include command to active proper environment at the beginning of this section.
     - Create a separate subsection for each script, numbered sequentially: `Step 1`, `Step 2`, etc.  
-- Research documentation is organized by dated folders under `docs/2026/`.
 
 ## Development practices
 
@@ -38,6 +37,8 @@ local structure and initiation, and associations with translation efficiency.
   lengthy traceback.
 - Print informative progress messages to the terminal during execution,
   including the current processing stage and relevant counts.
+  When reading large files, print update progress message every 100k lines,
+  when making Internet queries print message for each request (including URL).
 - In output TSV files, use `-` instead of an empty string for missing values.
 - Scripts under `work/` must be run from the repository root using their
   relative paths.

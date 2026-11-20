@@ -1,5 +1,7 @@
 # NCBI orthologs and Ensembl canonical transcripts
 
+## Introduction
+
 NCBI will be used to identify orthologous genes, and Ensembl will provide
 canonical transcript annotations, CDS coordinates, and transcript sequences.
 The eventual goal is to extract 50-nt transcript regions around annotated
@@ -76,6 +78,12 @@ manatee, and aardvark.
 
 ## Workflow
 
+Activate the project analysis environment from the repository root:
+
+```sh
+conda activate start-ss-scripts
+```
+
 ### Step 1. Prepare NCBI ortholog table
 
 Reuse the NCBI ortholog table generated in the previous analysis (`work/2026/1111.gabarap_orthologs.ncbi/01_GABARAP_ncbi_orthologs.tsv`), retaining the nine species included in the current Ensembl workflow and adding species keys from `constants.py`.
@@ -84,7 +92,7 @@ The resulting file is `01_GABARAP_ncbi_orthologs.tsv`.
 
 ### Step 2. Add Ensembl canonical transcript IDs
 
-Match NCBI ortholog gene symbols against `gene_name` attributes in the Ensembl GTF annotations.
+Match NCBI ortholog gene symbols against Ensembl GTF `gene_name` attributes to add canonical transcript and protein IDs plus CDS start, end, and length in transcript coordinates.
 
 ```sh
 python work/2026/1118.gabarap_orthologs/02_add_canonical_transcripts.py GABARAP
