@@ -1,11 +1,11 @@
-human_gene_symbol	species_name	species	ortholog_gene_symbol	ortholog_type
-GABARAP	human	Homo sapiens	GABARAP	PROTEIN_CODING
-GABARAP	mouse	Mus musculus	Gabarap	PROTEIN_CODING
-GABARAP	cow	Bos taurus	GABARAP	PROTEIN_CODING
-GABARAP	sheep	Ovis aries	GABARAP	PROTEIN_CODING
-GABARAP	panda	Ailuropoda melanoleuca	GABARAP	PROTEIN_CODING
-GABARAP	elephant	Loxodonta africana	GABARAP	PROTEIN_CODING
-GABARAP	dog	Canis lupus familiaris	GABARAP	PROTEIN_CODING
-GABARAP	horse	Equus caballus	GABARAP	PROTEIN_CODING
-GABARAP	rabbit	Oryctolagus cuniculus	GABARAP	PROTEIN_CODING
-GABARAP	marmoset	Callithrix jacchus	GABARAP	PROTEIN_CODING
+species_name	species	ortholog_gene_symbol	ortholog_type
+human	Homo sapiens	GABARAP	PROTEIN_CODING
+mouse	Mus musculus	Gabarap	PROTEIN_CODING
+cow	Bos taurus	GABARAP	PROTEIN_CODING
+sheep	Ovis aries	GABARAP	PROTEIN_CODING
+panda	Ailuropoda melanoleuca	GABARAP	PROTEIN_CODING
+elephant	Loxodonta africana	GABARAP	PROTEIN_CODING
+dog	Canis lupus familiaris	GABARAP	PROTEIN_CODING
+horse	Equus caballus	GABARAP	PROTEIN_CODING
+rabbit	Oryctolagus cuniculus	GABARAP	PROTEIN_CODING
+marmoset	Callithrix jacchus	GABARAP	PROTEIN_CODING

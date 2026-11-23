@@ -38,3 +38,19 @@ python work/2026/1123.gabarap_orthologs/01_add_canonical_transcripts.py GABARAP
 ```
 
 The resulting file is `01_GABARAP_orthologs.tsv`.
+
+### Step 2. Extract start-codon windows
+
+Use the canonical transcript IDs and CDS coordinates to retrieve each transcript
+from its Ensembl release 116 cDNA FASTA. Extract 23 nt upstream, the annotated
+3-nt start codon, and 24 nt downstream; invalid or incomplete windows are
+listed in the errors TSV. The cDNA FASTAs are read from
+`data/large_files/ensembl/cdna/`.
+
+```sh
+python work/2026/1123.gabarap_orthologs/02_extract_start_codon_sequences.py GABARAP
+```
+
+This writes `02_GABARAP_start_codon_windows.fasta` and
+`02_GABARAP_start_codon_windows.tsv` for successful windows, plus
+`02_GABARAP_extraction_errors.tsv` for failed rows.
