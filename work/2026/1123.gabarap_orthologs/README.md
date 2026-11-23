@@ -54,3 +54,18 @@ python work/2026/1123.gabarap_orthologs/02_extract_start_codon_sequences.py GABA
 This writes `02_GABARAP_start_codon_windows.fasta` and
 `02_GABARAP_start_codon_windows.tsv` for successful windows, plus
 `02_GABARAP_extraction_errors.tsv` for failed rows.
+
+### Step 3. Calculate minimum free energies
+
+Fold each successful 50-nt sequence as RNA using ViennaRNA's default `RNA.fold`
+parameters, without constraints or custom model settings. The script records
+the predicted structure, MFE, and GC percentage; failed folds are written to an
+error report.
+
+```sh
+python work/2026/1123.gabarap_orthologs/03_calculate_mfe.py GABARAP
+```
+
+This writes `03_GABARAP_rnafold_results.tsv`,
+`03_GABARAP_start_codon_structure.tsv`, and, if any folds fail,
+`03_GABARAP_rnafold_errors.tsv`.
