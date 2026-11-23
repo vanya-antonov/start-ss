@@ -101,7 +101,7 @@ python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py
 python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Callithrix_jacchus.mCalJac1.pat.X.116.gtf.gz
 ```
 
-Output TSVs are written directly to `data/large_files/`. Subsequent workflow steps can use these preprocessed tables instead of repeatedly parsing the GTF files.
+Output TSVs are written to `work/2026/1118.gabarap_orthologs/`, beside the script. Subsequent workflow steps can use these preprocessed tables instead of repeatedly parsing the GTF files.
 
 ### Step 1. Prepare NCBI ortholog table
 

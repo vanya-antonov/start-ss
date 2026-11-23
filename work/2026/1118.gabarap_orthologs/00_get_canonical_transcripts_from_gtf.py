@@ -14,8 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OUTPUT_DIR = PROJECT_ROOT / "data" / "large_files"
+SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_COLUMNS = [
     "gene_id",
     "gene_name",
@@ -401,12 +400,12 @@ def build_rows(gtf_path):
 
 
 def output_path_for_gtf(gtf_path):
-    """Place a same-basename canonical transcript TSV under data/large_files."""
+    """Place a same-basename canonical transcript TSV beside this script."""
     suffix = ".gtf.gz"
     if not gtf_path.name.endswith(suffix):
         raise ValueError(f"Expected a .gtf.gz input filename: {gtf_path.name}")
     output_name = gtf_path.name[: -len(suffix)] + ".canonical_transcripts.tsv"
-    return OUTPUT_DIR / output_name
+    return SCRIPT_DIR / output_name
 
 
 def write_text_atomically(path, rows):
