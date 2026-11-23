@@ -1,0 +1,10 @@
+human_gene_symbol	species_name	species	ortholog_gene_symbol	ortholog_type
+GABARAP	mouse	Mus musculus	Gabarap	PROTEIN_CODING
+GABARAP	cow	Bos taurus	GABARAP	PROTEIN_CODING
+GABARAP	sheep	Ovis aries	GABARAP	PROTEIN_CODING
+GABARAP	panda	Ailuropoda melanoleuca	GABARAP	PROTEIN_CODING
+GABARAP	elephant	Loxodonta africana	GABARAP	PROTEIN_CODING
+GABARAP	dog	Canis lupus familiaris	GABARAP	PROTEIN_CODING
+GABARAP	horse	Equus caballus	GABARAP	PROTEIN_CODING
+GABARAP	rabbit	Oryctolagus cuniculus	GABARAP	PROTEIN_CODING
+GABARAP	marmoset	Callithrix jacchus	GABARAP	PROTEIN_CODING
