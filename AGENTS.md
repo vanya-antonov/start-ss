@@ -15,9 +15,8 @@ local structure and initiation, and associations with translation efficiency.
   directories unless the task explicitly calls for it.
 - README files under `work/` must be concise and include the following sections:
   - **Introduction** — a brief description of the analysis and its objective.
-  - **Downloads** *(optional)* — all downloads required to execute the workflow scripts.
-  - **Workflow** — commands required to execute the workflow, with one or two optional explanatory lines for each command. Include command to active proper environment at the beginning of this section.
-    - Create a separate subsection for each script, numbered sequentially: `Step 1`, `Step 2`, etc.  
+  - **Data** *(optional)* — document the required downloads and provide commands to copy small files (under 1 MB) or create symlinks to files produced by earlier dated experiments.
+  - **Commands** — include the command to activate the proper environment first, followed by the commands needed to run the analysis. If scripts are present, create a separate subsection for each script, numbered sequentially as `Step 1`, `Step 2`, etc., with one or two explanatory lines. If no script commands are available yet, the section may contain only the environment activation command.
 
 ## Development practices
 
