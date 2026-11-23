@@ -14,7 +14,7 @@ and link the canonical transcript tables from the 1118 analysis.
 ```sh
 mkdir -p work/2026/1123.gabarap_orthologs
 cd work/2026/1123.gabarap_orthologs
-cp ../1118.gabarap_orthologs/01_GABARAP_ncbi_orthologs.tsv .
+cp ../1118.gabarap_orthologs/01_GABARAP_ncbi_orthologs.tsv 00_GABARAP_orthologs.tsv
 ls ../1118.gabarap_orthologs/*.canonical_transcripts.tsv | xargs -tI{} ln -s {}
 cd -
 ```
