@@ -1,0 +1,8 @@
+species_name	species	gene_symbol	transcript	GC	free_energy
+human	Homo sapiens	GABARAP	ENST00000302386.10	54.0	-14.80
+mouse	Mus musculus	Gabarap	ENSMUST00000018711.16	54.0	-10.50
+cow	Bos taurus	GABARAP	ENSBTAT00000019814.4	56.0	-16.60
+sheep	Ovis aries	GABARAP	ENSOART00020147237.1	56.0	-16.60
+dog	Canis lupus familiaris	GABARAP	ENSCAFT00845035768.1	54.0	-14.80
+rabbit	Oryctolagus cuniculus	GABARAP	ENSOCUT00000006994.2	60.0	-16.60
+marmoset	Callithrix jacchus	GABARAP	ENSCJAT00000075488.2	54.0	-12.70
