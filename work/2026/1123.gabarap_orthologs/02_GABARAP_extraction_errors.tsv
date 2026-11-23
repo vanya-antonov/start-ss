@@ -1,0 +1,4 @@
+species_name	species	gene_symbol	ensembl_gene	transcript	error_type	description
+panda	Ailuropoda melanoleuca	GABARAP	ENSAMEG00000016523.2	ENSAMET00000018165.2	insufficient_upstream_sequence	CDS starts at transcript position 1; need 23 upstream nt
+elephant	Loxodonta africana	GABARAP	ENSLAFG00000000744.3	ENSLAFT00000000743.3	insufficient_upstream_sequence	CDS starts at transcript position 1; need 23 upstream nt
+horse	Equus caballus	GABARAP	-	-	missing_transcript	No canonical transcript ID
