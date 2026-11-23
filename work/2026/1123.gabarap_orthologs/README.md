@@ -26,3 +26,15 @@ Activate the project analysis environment from the repository root:
 ```sh
 conda activate start-ss-scripts
 ```
+
+### Step 1. Add Ensembl canonical transcript annotations
+
+Match each ortholog gene symbol to the corresponding species' local canonical
+transcript table. The output includes Ensembl gene, transcript, and protein
+IDs and transcript-relative CDS coordinates.
+
+```sh
+python work/2026/1123.gabarap_orthologs/01_add_canonical_transcripts.py GABARAP
+```
+
+The resulting file is `01_GABARAP_orthologs.tsv`.
