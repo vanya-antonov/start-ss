@@ -71,3 +71,17 @@ python work/2026/1123.gabarap_orthologs/03_calculate_mfe.py GABARAP
 This writes `03_GABARAP_rnafold_results.tsv`,
 `03_GABARAP_start_codon_structure.tsv`, and, if any folds fail,
 `03_GABARAP_rnafold_errors.tsv`.
+
+### Step 4. Estimate structure conservation
+
+Compare each valid nonhuman dot-bracket structure with the human transcript.
+All valid structures must have the same length. Set the maximum number of
+character mismatches allowed for a structure to count as conserved.
+
+```sh
+python work/2026/1123.gabarap_orthologs/04_estimate_structure_conservation.py GABARAP --num_smiles_mismatches 1
+```
+
+The summary reports the number of valid ortholog structures, conserved
+orthologs, and the conservation percentage. It is written to
+`04_GABARAP_structure_conservation.tsv`.
