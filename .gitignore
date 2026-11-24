@@ -11,7 +11,8 @@ db.sqlite3
 db.sqlite3-journal
 
 # Large files
-data/large_files
+data/large_files/*
+!data/large_files/README.md
 data/human/02_mane_transcripts.gb.gz
 
 # Manually downloaded mammalian Ensembl annotations
