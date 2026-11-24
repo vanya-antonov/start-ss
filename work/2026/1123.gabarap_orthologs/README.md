@@ -8,14 +8,15 @@ in the previous analysis.
 
 ## Data
 
-Run these commands from the repository root to copy the NCBI ortholog table
-and link the canonical transcript tables generated beside the GTF files.
+Run these commands from the repository root to copy the NCBI ortholog table.
+Canonical transcript tables are read directly from
+`data/large_files/ensembl/gtf/` and must be generated first; see
+`data/large_files/README.md`.
 
 ```sh
 mkdir -p work/2026/1123.gabarap_orthologs
 cd work/2026/1123.gabarap_orthologs
 cp ../1118.gabarap_orthologs/01_GABARAP_ncbi_orthologs.tsv 00_GABARAP_orthologs.tsv
-ls ../../../data/large_files/ensembl/gtf/*.canonical_transcripts.tsv | xargs -tI{} ln -s {}
 cd -
 ```
 

@@ -14,6 +14,7 @@ from pathlib import Path
 
 EXPERIMENT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = EXPERIMENT_DIR.parents[2]
+DEFAULT_CANONICAL_DIR = PROJECT_ROOT / "data" / "large_files" / "ensembl" / "gtf"
 OUTPUT_COLUMNS = (
     "ensembl_gene",
     "ensembl_canonical_transcript",
@@ -349,8 +350,9 @@ def main() -> int:
     parser.add_argument(
         "--canonical-dir",
         type=Path,
-        default=EXPERIMENT_DIR,
-        help="Folder containing species canonical_transcripts.tsv tables",
+        default=DEFAULT_CANONICAL_DIR,
+        help="Folder containing species canonical_transcripts.tsv tables "
+        "(default: data/large_files/ensembl/gtf)",
     )
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
