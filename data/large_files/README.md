@@ -27,8 +27,30 @@ cd -
 ```
 
 These ten species are the ones with GTF annotations used by this workflow.
-The GTFs are preprocessed into canonical transcript tables by the Step 0
-command in `work/2026/1118.gabarap_orthologs/README.md`.
+
+### Step 1. Extract canonical transcripts from GTF files
+
+Convert each GTF into a TSV of canonical protein-coding transcripts. The
+tables include versioned gene, transcript, and protein IDs, transcript
+lengths, and CDS coordinates relative to the spliced transcript. Run from the
+repository root:
+
+```sh
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Homo_sapiens.GRCh38.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Mus_musculus.GRCm39.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Bos_taurus.ARS-UCD2.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Ovis_aries.ARS-UI_Ramb_v3.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Ailuropoda_melanoleuca.ASM200744v2.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Loxodonta_africana.loxAfr3.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Canis_lupus_familiaris.ROS_Cfam_1.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Equus_caballus.EquCab3.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Oryctolagus_cuniculus.OryCun2.0.116.gtf.gz
+python work/2026/1118.gabarap_orthologs/00_get_canonical_transcripts_from_gtf.py data/large_files/ensembl/gtf/Callithrix_jacchus.mCalJac1.pat.X.116.gtf.gz
+```
+
+The output TSVs are written beside their input GTF files in
+`data/large_files/ensembl/gtf/`. Later workflow steps can use these
+preprocessed tables instead of parsing the GTF files again.
 
 ## Ensembl release 116 cDNA FASTA sequences
 

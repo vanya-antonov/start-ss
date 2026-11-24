@@ -9,13 +9,13 @@ in the previous analysis.
 ## Data
 
 Run these commands from the repository root to copy the NCBI ortholog table
-and link the canonical transcript tables from the 1118 analysis.
+and link the canonical transcript tables generated beside the GTF files.
 
 ```sh
 mkdir -p work/2026/1123.gabarap_orthologs
 cd work/2026/1123.gabarap_orthologs
 cp ../1118.gabarap_orthologs/01_GABARAP_ncbi_orthologs.tsv 00_GABARAP_orthologs.tsv
-ls ../1118.gabarap_orthologs/*.canonical_transcripts.tsv | xargs -tI{} ln -s {}
+ls ../../../data/large_files/ensembl/gtf/*.canonical_transcripts.tsv | xargs -tI{} ln -s {}
 cd -
 ```
 
