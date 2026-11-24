@@ -24,19 +24,6 @@ DOWNSTREAM_LENGTH = 24
 WINDOW_LENGTH = UPSTREAM_LENGTH + START_CODON_LENGTH + DOWNSTREAM_LENGTH
 VALID_BASES = frozenset("ACGT")
 PROGRESS_INTERVAL = 100_000
-RESULT_COLUMNS = (
-    "species_name",
-    "species",
-    "gene_symbol",
-    "ensembl_gene",
-    "transcript",
-    "ensembl_protein",
-    "cds_start",
-    "cds_end",
-    "cds_length",
-    "sequence",
-    "GC",
-)
 ERROR_COLUMNS = (
     "species_name",
     "species",
@@ -72,7 +59,7 @@ def read_input_table(path: Path) -> tuple[list[str], list[dict[str, str]]]:
         required = {
             "species_name",
             "species",
-            "ortholog_gene_symbol",
+            "gene_symbol",
             "ensembl_gene",
             "ensembl_canonical_transcript",
             "ensembl_protein",
@@ -281,7 +268,7 @@ def process_table(
 ) -> int:
     """Extract windows for all valid annotated transcript rows."""
     print(f"Reading annotated ortholog table: {input_path}", flush=True)
-    _, rows = read_input_table(input_path)
+    input_columns, rows = read_input_table(input_path)
     print(f"Input rows: {len(rows):,}", flush=True)
 
     grouped_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
@@ -321,14 +308,18 @@ def process_table(
         duplicates_by_species[species_name] = duplicates
 
     successes: list[dict[str, str]] = []
+    results: list[dict[str, str]] = []
     errors: list[dict[str, str]] = []
     counts = Counter()
     for row_index, row in enumerate(rows):
         species_name = row["species_name"]
         species = row["species"]
-        symbol = row["ortholog_gene_symbol"]
+        symbol = row["gene_symbol"]
         gene_id = row["ensembl_gene"]
         transcript_id = row["ensembl_canonical_transcript"]
+        result = dict(row)
+        result["sequence"] = "-"
+        result["GC"] = "-"
         try:
             if row_index in annotation_errors:
                 raise annotation_errors[row_index]
@@ -366,8 +357,12 @@ def process_table(
             print(
                 f"{species_name} {symbol}: {error.error_type}: {error}", flush=True
             )
+            results.append(result)
             continue
 
+        result["sequence"] = window
+        result["GC"] = f"{gc_percent:.1f}"
+        results.append(result)
         successes.append(
             {
                 "species_name": species_name,
@@ -386,7 +381,11 @@ def process_table(
         counts["success"] += 1
 
     write_fasta(fasta_output, successes)
-    write_tsv(results_output, successes, RESULT_COLUMNS)
+    result_columns = list(input_columns)
+    for column in ("sequence", "GC"):
+        if column not in result_columns:
+            result_columns.append(column)
+    write_tsv(results_output, results, tuple(result_columns))
     write_tsv(errors_output, errors, ERROR_COLUMNS)
     print(f"\nInput rows: {len(rows):,}", flush=True)
     print(f"Successfully extracted windows: {counts['success']:,}", flush=True)
