@@ -216,7 +216,7 @@ def automatic_paths(gene_name: str) -> tuple[Path, Path, Path, Path, Path]:
     if not safe_name:
         raise ValueError("Gene name must contain filename-safe characters")
     return (
-        EXPERIMENT_DIR / f"02_{safe_name}_start_codon_windows.tsv",
+        EXPERIMENT_DIR / f"02_{safe_name}_orthologs.tsv",
         EXPERIMENT_DIR / f"02_{safe_name}_start_codon_windows.fasta",
         EXPERIMENT_DIR / f"03_{safe_name}_rnafold_results.tsv",
         EXPERIMENT_DIR / f"03_{safe_name}_start_codon_structure.tsv",

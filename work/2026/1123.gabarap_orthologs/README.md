@@ -53,8 +53,9 @@ python work/2026/1123.gabarap_orthologs/02_extract_start_codon_sequences.py GABA
 ```
 
 This writes `02_GABARAP_start_codon_windows.fasta` and
-`02_GABARAP_start_codon_windows.tsv` for successful windows, plus
-`02_GABARAP_extraction_errors.tsv` for failed rows.
+`02_GABARAP_orthologs.tsv` with successful windows, plus
+`02_GABARAP_extraction_errors.tsv` for failed rows. The TSV retains the
+annotated ortholog columns and adds the extracted sequence and GC percentage.
 
 ### Step 3. Calculate minimum free energies
 
