@@ -1,0 +1,4 @@
+species_name	species	gene_symbol	transcript	error_type	description
+panda	Ailuropoda melanoleuca	GABARAP	ENSAMET00000018165.2	ValueError	No sequence found in TSV or FASTA for panda|ENSAMET00000018165.2
+elephant	Loxodonta africana	GABARAP	ENSLAFT00000000743.3	ValueError	No sequence found in TSV or FASTA for elephant|ENSLAFT00000000743.3
+horse	Equus caballus	GABARAP	-	ValueError	No sequence found in TSV or FASTA for horse|-

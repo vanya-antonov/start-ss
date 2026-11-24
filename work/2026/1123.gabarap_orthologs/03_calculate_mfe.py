@@ -25,22 +25,6 @@ EXPECTED_HUMAN_MFE = -14.80
 MFE_TOLERANCE = 0.01
 PROGRESS_INTERVAL = 500
 LOG = logging.getLogger("calculate_gabarap_mfe")
-INTERMEDIATE_COLUMNS = (
-    "species_name",
-    "species",
-    "gene_symbol",
-    "transcript",
-    "structure",
-    "MFE",
-)
-FINAL_COLUMNS = (
-    "species_name",
-    "species",
-    "gene_symbol",
-    "transcript",
-    "GC",
-    "free_energy",
-)
 ERROR_COLUMNS = (
     "species_name",
     "species",
@@ -104,7 +88,7 @@ def load_fasta_sequences(path: Path) -> dict[str, str]:
 
 def load_input(
     table_path: Path, fasta_path: Path
-) -> tuple[list[dict[str, str]], dict[str, str]]:
+) -> tuple[list[str], list[dict[str, str]], dict[str, str]]:
     """Read sequence metadata and load the FASTA only if TSV sequences are absent."""
     if not table_path.is_file():
         raise FileNotFoundError(f"Input TSV not found: {table_path}")
@@ -112,41 +96,42 @@ def load_input(
         reader = csv.DictReader(input_file, delimiter="\t")
         if not reader.fieldnames:
             raise ValueError("Input TSV is empty or has no header")
-        required = {"species_name", "species", "gene_symbol", "transcript", "GC"}
+        required = {"species_name", "species", "gene_symbol", "GC"}
         missing = required - set(reader.fieldnames)
+        if not ({"transcript", "ensembl_canonical_transcript"} & set(reader.fieldnames)):
+            missing.add("transcript or ensembl_canonical_transcript")
         if missing:
             raise ValueError(
                 "Input TSV is missing required columns: "
                 + ", ".join(sorted(missing))
             )
         rows = []
-        identifiers = set()
         for line_number, row in enumerate(reader, start=2):
             if None in row or any(value is None for value in row.values()):
                 raise ValueError(
                     f"Malformed TSV row at line {line_number}: "
                     "column count differs from header"
                 )
-            key = (row["species_name"], row["transcript"])
-            if key in identifiers:
-                raise ValueError(
-                    f"Duplicate species/transcript pair in input TSV: {key}"
-                )
-            identifiers.add(key)
             rows.append(row)
 
     fasta_sequences: dict[str, str] = {}
-    if any(not row.get("sequence", "").strip() for row in rows):
+    if any(row.get("sequence", "").strip() in {"", "-"} for row in rows):
         fasta_sequences = load_fasta_sequences(fasta_path)
-    return rows, fasta_sequences
+    return list(reader.fieldnames), rows, fasta_sequences
+
+
+def transcript_for_row(row: dict[str, str]) -> str:
+    """Return the transcript ID column used by the input table."""
+    return row.get("transcript") or row.get("ensembl_canonical_transcript", "")
 
 
 def sequence_for_row(row: dict[str, str], fasta_sequences: dict[str, str]) -> str:
     """Use the TSV sequence or look it up in FASTA by species and transcript."""
     sequence = row.get("sequence", "").strip()
-    if sequence:
+    if sequence and sequence != "-":
         return sequence.upper()
-    key = f"{row['species_name']}|{row['transcript']}"
+    transcript = transcript_for_row(row)
+    key = f"{row['species_name']}|{transcript}"
     if key not in fasta_sequences:
         raise ValueError(f"No sequence found in TSV or FASTA for {key}")
     return fasta_sequences[key]
@@ -210,7 +195,7 @@ def atomic_write_tsv(
     temporary_path.replace(path)
 
 
-def automatic_paths(gene_name: str) -> tuple[Path, Path, Path, Path, Path]:
+def automatic_paths(gene_name: str) -> tuple[Path, Path, Path, Path]:
     """Build default input and output paths from the required gene name."""
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", gene_name.strip()).strip("._-")
     if not safe_name:
@@ -218,8 +203,7 @@ def automatic_paths(gene_name: str) -> tuple[Path, Path, Path, Path, Path]:
     return (
         EXPERIMENT_DIR / f"02_{safe_name}_orthologs.tsv",
         EXPERIMENT_DIR / f"02_{safe_name}_start_codon_windows.fasta",
-        EXPERIMENT_DIR / f"03_{safe_name}_rnafold_results.tsv",
-        EXPERIMENT_DIR / f"03_{safe_name}_start_codon_structure.tsv",
+        EXPERIMENT_DIR / f"03_{safe_name}_orthologs.tsv",
         EXPERIMENT_DIR / f"03_{safe_name}_rnafold_errors.tsv",
     )
 
@@ -233,7 +217,7 @@ def validate_human_reference(
             row
             for row in rows
             if row["species_name"] == "human"
-            and row["transcript"] == EXPECTED_HUMAN_TRANSCRIPT
+            and transcript_for_row(row) == EXPECTED_HUMAN_TRANSCRIPT
         ),
         None,
     )
@@ -249,7 +233,7 @@ def validate_human_reference(
             row
             for row in successful_rows
             if row["species_name"] == "human"
-            and row["transcript"] == EXPECTED_HUMAN_TRANSCRIPT
+            and transcript_for_row(row) == EXPECTED_HUMAN_TRANSCRIPT
         ),
         None,
     )
@@ -316,8 +300,7 @@ def parse_args() -> argparse.Namespace:
         default=1,
         help="Number of worker processes (default: 1)",
     )
-    parser.add_argument("--intermediate-output", type=Path, help="Override structure/MFE TSV")
-    parser.add_argument("--final-output", type=Path, help="Override final energy TSV")
+    parser.add_argument("--output", type=Path, help="Override output TSV")
     parser.add_argument("--errors-output", type=Path, help="Override error report TSV")
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -338,14 +321,12 @@ def main() -> int:
         (
             default_input,
             default_fasta,
-            default_intermediate,
-            default_final,
+            default_output,
             default_errors,
         ) = automatic_paths(args.gene_name)
         input_path = args.input or default_input
         fasta_path = args.fasta or default_fasta
-        intermediate_path = args.intermediate_output or default_intermediate
-        final_path = args.final_output or default_final
+        output_path = args.output or default_output
         errors_path = args.errors_output or default_errors
 
         import RNA
@@ -356,7 +337,7 @@ def main() -> int:
         LOG.info("Worker processes: %d", args.num_cpu)
         LOG.info("Input table: %s", input_path)
 
-        rows, fasta_sequences = load_input(input_path, fasta_path)
+        input_columns, rows, fasta_sequences = load_input(input_path, fasta_path)
         tasks = []
         for row in rows:
             try:
@@ -370,7 +351,7 @@ def main() -> int:
                     row["species_name"],
                     row["species"],
                     row["gene_symbol"],
-                    row["transcript"],
+                    transcript_for_row(row),
                     row["GC"],
                     sequence,
                     input_error,
@@ -379,6 +360,9 @@ def main() -> int:
 
         successful: list[dict[str, str]] = []
         errors: list[dict[str, str]] = []
+        output_rows = [
+            {**row, "structure": "-", "MFE": "-"} for row in rows
+        ]
         pool = None
         if args.num_cpu == 1:
             results = map(process_transcript, tasks)
@@ -391,6 +375,8 @@ def main() -> int:
             for index, (is_success, result) in enumerate(results, start=1):
                 if is_success:
                     successful.append(result)
+                    output_rows[index - 1]["structure"] = result["structure"]
+                    output_rows[index - 1]["MFE"] = result["MFE"]
                 else:
                     errors.append(result)
                     LOG.error(
@@ -412,23 +398,11 @@ def main() -> int:
                 pool.close()
                 pool.join()
 
-        intermediate_rows = [
-            {key: row[key] for key in INTERMEDIATE_COLUMNS}
-            for row in successful
-        ]
-        final_rows = [
-            {
-                "species_name": row["species_name"],
-                "species": row["species"],
-                "gene_symbol": row["gene_symbol"],
-                "transcript": row["transcript"],
-                "GC": row["_GC"],
-                "free_energy": row["MFE"],
-            }
-            for row in successful
-        ]
-        atomic_write_tsv(intermediate_path, intermediate_rows, INTERMEDIATE_COLUMNS)
-        atomic_write_tsv(final_path, final_rows, FINAL_COLUMNS)
+        output_columns = list(input_columns)
+        for column in ("structure", "MFE"):
+            if column not in output_columns:
+                output_columns.append(column)
+        atomic_write_tsv(output_path, output_rows, tuple(output_columns))
         if errors:
             atomic_write_tsv(errors_path, errors, ERROR_COLUMNS)
             LOG.info("Wrote error report: %s", errors_path)
@@ -441,8 +415,7 @@ def main() -> int:
         LOG.info("Total input windows: %d", len(tasks))
         LOG.info("Successfully folded: %d", len(successful))
         LOG.info("Failed windows: %d", len(errors))
-        LOG.info("Wrote structure/MFE table: %s", intermediate_path)
-        LOG.info("Wrote final energy table: %s", final_path)
+        LOG.info("Wrote structure/MFE table: %s", output_path)
     except (OSError, UnicodeError, csv.Error, ValueError, ImportError) as error:
         LOG.error("MFE calculation could not complete: %s", error)
         return 1

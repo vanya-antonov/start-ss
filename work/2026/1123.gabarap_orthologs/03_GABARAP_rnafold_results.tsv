@@ -1,8 +1,0 @@
-species_name	species	gene_symbol	transcript	structure	MFE
-human	Homo sapiens	GABARAP	ENST00000302386.10	.((((..(((((...))))).))))...((((............))))..	-14.80
-mouse	Mus musculus	Gabarap	ENSMUST00000018711.16	.......((((.....))))........((((.(........).))))..	-10.50
-cow	Bos taurus	GABARAP	ENSBTAT00000019814.4	.((((..(((((...))))).))))...((((.(........).))))..	-16.60
-sheep	Ovis aries	GABARAP	ENSOART00020147237.1	.((((..(((((...))))).))))...((((.(........).))))..	-16.60
-dog	Canis lupus familiaris	GABARAP	ENSCAFT00845035768.1	.((((..(((((...))))).))))...((((............))))..	-14.80
-rabbit	Oryctolagus cuniculus	GABARAP	ENSOCUT00000006994.2	.((((..(((((...))))).))))...((((.(........).))))..	-16.60
-marmoset	Callithrix jacchus	GABARAP	ENSCJAT00000075488.2	.((((..((((.....)))).))))...((((............))))..	-12.70
