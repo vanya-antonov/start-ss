@@ -1,2 +1,9 @@
-reference_species	reference_transcript	reference_structure_length	num_smiles_mismatches	num_orthologs	num_conserved_orthologs	percent_conserved	nonhuman_rows_excluded_missing_or_invalid_structure
-Homo sapiens	ENST00000302386.10	50	1	6	1	16.7	3
+statistic	value
+reference_species	Homo sapiens
+reference_transcript	ENST00000302386.10
+reference_structure_length	50
+num_smiles_mismatches	2
+num_orthologs	6
+num_conserved_orthologs	5
+percent_conserved	83.3
+nonhuman_rows_excluded_missing_or_invalid_structure	3

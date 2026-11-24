@@ -155,7 +155,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--num_smiles_mismatches",
         type=int,
-        required=True,
+        default=2,
         help="Maximum differing dot-bracket characters for a conserved structure",
     )
     parser.add_argument("--input", type=Path, help="Override the Step 3 input TSV")
@@ -180,8 +180,10 @@ def main() -> int:
         rows = read_structures(input_path)
         print(f"Input rows: {len(rows):,}", flush=True)
         summary = compare_to_human(rows, args.num_smiles_mismatches)
-        columns = tuple(summary)
-        atomic_write_tsv(output_path, [summary], columns)
+        summary_rows = [
+            {"statistic": name, "value": value} for name, value in summary.items()
+        ]
+        atomic_write_tsv(output_path, summary_rows, ("statistic", "value"))
         print(
             f"Compared {summary['num_orthologs']} valid nonhuman structure(s); "
             f"{summary['num_conserved_orthologs']} conserved "

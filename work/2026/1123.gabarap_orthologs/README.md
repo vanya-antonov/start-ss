@@ -79,7 +79,7 @@ All valid structures must have the same length. Set the maximum number of
 character mismatches allowed for a structure to count as conserved.
 
 ```sh
-python work/2026/1123.gabarap_orthologs/04_estimate_structure_conservation.py GABARAP --num_smiles_mismatches 1
+python work/2026/1123.gabarap_orthologs/04_estimate_structure_conservation.py GABARAP
 ```
 
 The summary reports the number of valid ortholog structures, conserved
