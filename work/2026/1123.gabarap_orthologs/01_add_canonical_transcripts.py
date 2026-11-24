@@ -59,7 +59,7 @@ def read_input_table(path: Path) -> tuple[list[str], list[dict[str, str]]]:
             raise ValueError("Input TSV is empty or has no header")
         if len(reader.fieldnames) != len(set(reader.fieldnames)):
             raise ValueError("Input TSV contains duplicate column names")
-        missing = {"species_name", "ortholog_gene_symbol"} - set(reader.fieldnames)
+        missing = {"species_name", "gene_symbol"} - set(reader.fieldnames)
         if missing:
             raise ValueError(
                 "Input TSV is missing required column(s): "
@@ -280,9 +280,9 @@ def process_table(
     for species_name, species_rows in rows_by_species.items():
         table_path = canonical_table_for_species(species_name, canonical_dir)
         symbols = {
-            row["ortholog_gene_symbol"]
+            row["gene_symbol"]
             for row in species_rows
-            if row["ortholog_gene_symbol"] not in {"", "-"}
+            if row["gene_symbol"] not in {"", "-"}
         }
         print(
             f"\nProcessing {species_name}: {len(species_rows)} row(s), "
@@ -294,7 +294,7 @@ def process_table(
         results = {symbol: resolve_symbol(symbol, matches) for symbol in symbols}
 
         for row in species_rows:
-            symbol = row["ortholog_gene_symbol"]
+            symbol = row["gene_symbol"]
             result = results.get(symbol) or resolve_symbol(symbol, matches)
             row.update(zip(OUTPUT_COLUMNS, result.values))
             species_counts[result.status] += 1
