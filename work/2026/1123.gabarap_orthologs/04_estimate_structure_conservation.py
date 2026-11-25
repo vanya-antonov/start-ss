@@ -61,9 +61,9 @@ def transcript_for_row(row: dict[str, str]) -> str:
 
 
 def atomic_write_tsv(
-    path: Path, rows: list[dict[str, str]], columns: tuple[str, ...]
+    path: Path, rows: list[dict[str, str]], columns: tuple[str, ...] | list[str]
 ) -> None:
-    """Write the summary TSV atomically."""
+    """Write a TSV atomically."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
         mode="w", encoding="utf-8", newline="", dir=path.parent, delete=False
@@ -79,7 +79,7 @@ def atomic_write_tsv(
     temporary_path.replace(path)
 
 
-def automatic_paths(gene_name: str) -> tuple[Path, Path]:
+def automatic_paths(gene_name: str) -> tuple[Path, Path, Path]:
     """Build default input and output paths from the required gene name."""
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", gene_name.strip()).strip("._-")
     if not safe_name:
@@ -87,6 +87,7 @@ def automatic_paths(gene_name: str) -> tuple[Path, Path]:
     return (
         EXPERIMENT_DIR / f"03_{safe_name}_orthologs.tsv",
         EXPERIMENT_DIR / f"04_{safe_name}_structure_conservation.tsv",
+        EXPERIMENT_DIR / f"04_{safe_name}_orthologs.tsv",
     )
 
 
@@ -123,9 +124,15 @@ def compare_to_human(
         )
 
     conserved = 0
+    for row in rows:
+        row["num_structure_mismatches_with_human"] = "-"
+        row["structure_match_human"] = "-"
+
     for row in valid_orthologs:
         structure = row["structure"].strip()
         mismatches = sum(a != b for a, b in zip(human_structure, structure))
+        row["num_structure_mismatches_with_human"] = str(mismatches)
+        row["structure_match_human"] = "yes" if mismatches <= max_mismatches else "no"
         if mismatches <= max_mismatches:
             conserved += 1
 
@@ -160,6 +167,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input", type=Path, help="Override the Step 3 input TSV")
     parser.add_argument("--output", type=Path, help="Override the summary TSV path")
+    parser.add_argument(
+        "--orthologs-output",
+        type=Path,
+        help="Override the annotated ortholog TSV path",
+    )
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         raise SystemExit(2)
@@ -173,9 +185,12 @@ def main() -> int:
     """Estimate and report structure conservation relative to human."""
     args = parse_args()
     try:
-        default_input, default_output = automatic_paths(args.gene_name)
+        default_input, default_output, default_orthologs_output = automatic_paths(
+            args.gene_name
+        )
         input_path = args.input or default_input
         output_path = args.output or default_output
+        orthologs_output_path = args.orthologs_output or default_orthologs_output
         print(f"Reading Step 3 structures: {input_path}", flush=True)
         rows = read_structures(input_path)
         print(f"Input rows: {len(rows):,}", flush=True)
@@ -184,6 +199,14 @@ def main() -> int:
             {"statistic": name, "value": value} for name, value in summary.items()
         ]
         atomic_write_tsv(output_path, summary_rows, ("statistic", "value"))
+        ortholog_columns = list(rows[0])
+        for column in (
+            "num_structure_mismatches_with_human",
+            "structure_match_human",
+        ):
+            if column not in ortholog_columns:
+                ortholog_columns.append(column)
+        atomic_write_tsv(orthologs_output_path, rows, ortholog_columns)
         print(
             f"Compared {summary['num_orthologs']} valid nonhuman structure(s); "
             f"{summary['num_conserved_orthologs']} conserved "
@@ -196,6 +219,7 @@ def main() -> int:
             flush=True,
         )
         print(f"Summary TSV: {output_path}", flush=True)
+        print(f"Annotated orthologs TSV: {orthologs_output_path}", flush=True)
     except (OSError, UnicodeError, csv.Error, ValueError) as error:
         print(f"Structure conservation could not be calculated: {error}", file=sys.stderr)
         return 1

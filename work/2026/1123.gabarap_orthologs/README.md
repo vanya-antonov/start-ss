@@ -91,4 +91,8 @@ python work/2026/1123.gabarap_orthologs/04_estimate_structure_conservation.py GA
 
 The summary reports the number of valid ortholog structures, conserved
 orthologs, and the conservation percentage. It is written to
-`04_GABARAP_structure_conservation.tsv`.
+`04_GABARAP_structure_conservation.tsv`. The script also writes
+`04_GABARAP_orthologs.tsv`, preserving the Step 3 rows and adding
+`num_structure_mismatches_with_human` and `structure_match_human`. The match
+column is `yes` when the mismatch count is at or below the configured threshold;
+the human row and rows without a valid structure use `-` in both columns.
