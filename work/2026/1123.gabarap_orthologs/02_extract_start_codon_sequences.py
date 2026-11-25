@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract validated 50-nt windows around annotated transcript start codons."""
+"""Write full transcripts and extract validated start-codon windows."""
 
 from __future__ import annotations
 
@@ -237,7 +237,7 @@ def write_tsv(path: Path, rows: list[dict[str, str]], columns: tuple[str, ...]) 
 
 
 def write_fasta(path: Path, rows: list[dict[str, str]]) -> None:
-    """Write successful windows as FASTA records keyed by species and transcript."""
+    """Write full transcript sequences as FASTA records keyed by species and transcript."""
     def writer(handle: TextIO) -> None:
         for row in rows:
             record_id = f"{row['species_name']}|{row['transcript']}"
@@ -253,7 +253,7 @@ def automatic_paths(gene_name: str) -> tuple[Path, Path, Path, Path]:
         raise ValueError("Gene name must contain filename-safe characters")
     return (
         EXPERIMENT_DIR / f"01_{safe_name}_orthologs.tsv",
-        EXPERIMENT_DIR / f"02_{safe_name}_start_codon_windows.fasta",
+        EXPERIMENT_DIR / f"02_{safe_name}_transcripts.fasta",
         EXPERIMENT_DIR / f"02_{safe_name}_orthologs.tsv",
         EXPERIMENT_DIR / f"02_{safe_name}_extraction_errors.tsv",
     )
@@ -266,7 +266,7 @@ def process_table(
     results_output: Path,
     errors_output: Path,
 ) -> int:
-    """Extract windows for all valid annotated transcript rows."""
+    """Write found full transcripts and extract windows for valid annotations."""
     print(f"Reading annotated ortholog table: {input_path}", flush=True)
     input_columns, rows = read_input_table(input_path)
     print(f"Input rows: {len(rows):,}", flush=True)
@@ -277,21 +277,18 @@ def process_table(
 
     sequences_by_species: dict[str, dict[str, str]] = {}
     duplicates_by_species: dict[str, set[str]] = {}
-    annotation_errors: dict[int, ExtractionError] = {}
     requested_by_species: dict[str, set[str]] = defaultdict(set)
-    for row_index, row in enumerate(rows):
-        try:
-            transcript_id, _, _, _ = validate_annotation(row)
+    for row in rows:
+        transcript_id = row["ensembl_canonical_transcript"]
+        if transcript_id and transcript_id != "-":
             requested_by_species[row["species_name"]].add(transcript_id)
-        except ExtractionError as error:
-            annotation_errors[row_index] = error
 
     for species_name, species_rows in grouped_rows.items():
         requested_ids = requested_by_species.get(species_name, set())
         if not requested_ids:
             print(
                 f"\nSkipping cDNA FASTA scan for {species_name}: "
-                "no rows have valid transcript/CDS annotations.",
+                "no rows have canonical transcript IDs.",
                 flush=True,
             )
             sequences_by_species[species_name] = {}
@@ -307,7 +304,7 @@ def process_table(
         sequences_by_species[species_name] = sequences
         duplicates_by_species[species_name] = duplicates
 
-    successes: list[dict[str, str]] = []
+    transcripts: list[dict[str, str]] = []
     results: list[dict[str, str]] = []
     errors: list[dict[str, str]] = []
     counts = Counter()
@@ -320,9 +317,19 @@ def process_table(
         result = dict(row)
         result["sequence"] = "-"
         result["GC"] = "-"
+        transcript_sequence = sequences_by_species.get(species_name, {}).get(transcript_id)
+        if (
+            transcript_sequence is not None
+            and transcript_id not in duplicates_by_species.get(species_name, set())
+        ):
+            transcripts.append(
+                {
+                    "species_name": species_name,
+                    "transcript": transcript_id,
+                    "sequence": transcript_sequence,
+                }
+            )
         try:
-            if row_index in annotation_errors:
-                raise annotation_errors[row_index]
             transcript_id, cds_start, cds_end, cds_length = validate_annotation(row)
             if transcript_id in duplicates_by_species.get(species_name, set()):
                 raise ExtractionError(
@@ -363,24 +370,9 @@ def process_table(
         result["sequence"] = window
         result["GC"] = f"{gc_percent:.1f}"
         results.append(result)
-        successes.append(
-            {
-                "species_name": species_name,
-                "species": species,
-                "gene_symbol": symbol,
-                "ensembl_gene": gene_id or "-",
-                "transcript": transcript_id,
-                "ensembl_protein": row["ensembl_protein"] or "-",
-                "cds_start": str(cds_start),
-                "cds_end": str(cds_end),
-                "cds_length": str(cds_length),
-                "sequence": window,
-                "GC": f"{gc_percent:.1f}",
-            }
-        )
         counts["success"] += 1
 
-    write_fasta(fasta_output, successes)
+    write_fasta(fasta_output, transcripts)
     result_columns = list(input_columns)
     for column in ("sequence", "GC"):
         if column not in result_columns:
@@ -388,6 +380,7 @@ def process_table(
     write_tsv(results_output, results, tuple(result_columns))
     write_tsv(errors_output, errors, ERROR_COLUMNS)
     print(f"\nInput rows: {len(rows):,}", flush=True)
+    print(f"Full transcripts written: {len(transcripts):,}", flush=True)
     print(f"Successfully extracted windows: {counts['success']:,}", flush=True)
     print(f"Failed rows: {len(errors):,}", flush=True)
     for error_type, count in sorted(counts.items()):

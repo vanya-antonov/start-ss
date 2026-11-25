@@ -87,9 +87,9 @@ def load_fasta_sequences(path: Path) -> dict[str, str]:
 
 
 def load_input(
-    table_path: Path, fasta_path: Path
+    table_path: Path, fasta_path: Path | None
 ) -> tuple[list[str], list[dict[str, str]], dict[str, str]]:
-    """Read sequence metadata and load the FASTA only if TSV sequences are absent."""
+    """Read sequence metadata and optionally load an explicitly supplied FASTA fallback."""
     if not table_path.is_file():
         raise FileNotFoundError(f"Input TSV not found: {table_path}")
     with table_path.open(encoding="utf-8-sig", newline="") as input_file:
@@ -115,7 +115,7 @@ def load_input(
             rows.append(row)
 
     fasta_sequences: dict[str, str] = {}
-    if any(row.get("sequence", "").strip() in {"", "-"} for row in rows):
+    if fasta_path and any(row.get("sequence", "").strip() in {"", "-"} for row in rows):
         fasta_sequences = load_fasta_sequences(fasta_path)
     return list(reader.fieldnames), rows, fasta_sequences
 
@@ -195,14 +195,13 @@ def atomic_write_tsv(
     temporary_path.replace(path)
 
 
-def automatic_paths(gene_name: str) -> tuple[Path, Path, Path, Path]:
+def automatic_paths(gene_name: str) -> tuple[Path, Path, Path]:
     """Build default input and output paths from the required gene name."""
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", gene_name.strip()).strip("._-")
     if not safe_name:
         raise ValueError("Gene name must contain filename-safe characters")
     return (
         EXPERIMENT_DIR / f"02_{safe_name}_orthologs.tsv",
-        EXPERIMENT_DIR / f"02_{safe_name}_start_codon_windows.fasta",
         EXPERIMENT_DIR / f"03_{safe_name}_orthologs.tsv",
         EXPERIMENT_DIR / f"03_{safe_name}_rnafold_errors.tsv",
     )
@@ -291,7 +290,11 @@ def parse_args() -> argparse.Namespace:
         help="Gene name used to select default input and output filenames",
     )
     parser.add_argument("--input", type=Path, help="Override the input results TSV")
-    parser.add_argument("--fasta", type=Path, help="Override the sequence FASTA path")
+    parser.add_argument(
+        "--fasta",
+        type=Path,
+        help="Optional FASTA fallback for rows without a sequence in the input TSV",
+    )
     parser.add_argument(
         "--num-cpu",
         "--num_cpu",
@@ -318,14 +321,9 @@ def main() -> int:
     )
     args = parse_args()
     try:
-        (
-            default_input,
-            default_fasta,
-            default_output,
-            default_errors,
-        ) = automatic_paths(args.gene_name)
+        default_input, default_output, default_errors = automatic_paths(args.gene_name)
         input_path = args.input or default_input
-        fasta_path = args.fasta or default_fasta
+        fasta_path = args.fasta
         output_path = args.output or default_output
         errors_path = args.errors_output or default_errors
 

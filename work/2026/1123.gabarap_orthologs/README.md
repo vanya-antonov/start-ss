@@ -40,29 +40,34 @@ python work/2026/1123.gabarap_orthologs/01_add_canonical_transcripts.py GABARAP
 
 The resulting file is `01_GABARAP_orthologs.tsv`.
 
-### Step 2. Extract start-codon windows
+### Step 2. Retrieve full transcripts and extract start-codon windows
 
-Use the canonical transcript IDs and CDS coordinates to retrieve each transcript
-from its Ensembl release 116 cDNA FASTA. Extract 23 nt upstream, the annotated
-3-nt start codon, and 24 nt downstream; invalid or incomplete windows are
-listed in the errors TSV. The cDNA FASTAs are read from
+Use the canonical transcript IDs to retrieve each full cDNA sequence from its
+Ensembl release 116 FASTA. The FASTA output includes the full transcript even
+when CDS annotations do not permit window extraction, and preserves ambiguous
+bases. Separately, extract 23 nt upstream, the annotated 3-nt start codon, and
+24 nt downstream for the results TSV; invalid or incomplete windows are listed
+in the errors TSV. The cDNA FASTAs are read from
 `data/large_files/ensembl/cdna/`.
 
 ```sh
 python work/2026/1123.gabarap_orthologs/02_extract_start_codon_sequences.py GABARAP
 ```
 
-This writes `02_GABARAP_start_codon_windows.fasta` and
-`02_GABARAP_orthologs.tsv` with successful windows, plus
-`02_GABARAP_extraction_errors.tsv` for failed rows. The TSV retains the
-annotated ortholog columns and adds the extracted sequence and GC percentage.
+This writes full-length sequences to `02_GABARAP_transcripts.fasta`,
+`02_GABARAP_orthologs.tsv` with the 50-nt window in its `sequence` column (or
+`-` when extraction fails), and `02_GABARAP_extraction_errors.tsv` for failed
+window extractions. The TSV retains the annotated ortholog columns and adds the
+extracted sequence and GC percentage.
 
 ### Step 3. Calculate minimum free energies
 
-Fold each successful 50-nt sequence as RNA using ViennaRNA's default `RNA.fold`
-parameters, without constraints or custom model settings. The script records
-the predicted structure, MFE, and GC percentage; failed folds are written to an
-error report.
+Fold each successful 50-nt sequence from the step 2 results TSV as RNA using
+ViennaRNA's default `RNA.fold` parameters, without constraints or custom model
+settings. The script records the predicted structure, MFE, and GC percentage;
+failed folds are written to an error report. An optional `--fasta` argument can
+provide a legacy 50-nt window FASTA as fallback for rows missing a TSV sequence;
+the full-transcript FASTA from step 2 is not a folding input.
 
 ```sh
 python work/2026/1123.gabarap_orthologs/03_calculate_mfe.py GABARAP
