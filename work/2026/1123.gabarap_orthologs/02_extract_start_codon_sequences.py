@@ -173,6 +173,23 @@ def validate_annotation(row: dict[str, str]) -> tuple[str, int, int, int]:
     return transcript_id, cds_start, cds_end, cds_length
 
 
+def format_transcript_case(sequence: str, row: dict[str, str]) -> str:
+    """Uppercase the annotated CDS and lowercase both UTRs."""
+    try:
+        _, cds_start, cds_end, _ = validate_annotation(row)
+    except ExtractionError:
+        return sequence.lower()
+    if cds_end > len(sequence):
+        return sequence.lower()
+    start_index = cds_start - 1
+    end_index = cds_end
+    return (
+        sequence[:start_index].lower()
+        + sequence[start_index:end_index].upper()
+        + sequence[end_index:].lower()
+    )
+
+
 def extract_window(sequence: str, cds_start: int) -> tuple[str, float]:
     """Extract 23 nt + annotated ATG + 24 nt in transcript orientation."""
     start_index = cds_start - 1
@@ -326,7 +343,7 @@ def process_table(
                 {
                     "species_name": species_name,
                     "transcript": transcript_id,
-                    "sequence": transcript_sequence,
+                    "sequence": format_transcript_case(transcript_sequence, row),
                 }
             )
         try:

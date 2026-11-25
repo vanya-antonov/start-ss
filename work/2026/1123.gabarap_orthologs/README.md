@@ -47,7 +47,9 @@ Ensembl release 116 FASTA. The FASTA output includes the full transcript even
 when CDS annotations do not permit window extraction, and preserves ambiguous
 bases. Separately, extract 23 nt upstream, the annotated 3-nt start codon, and
 24 nt downstream for the results TSV; invalid or incomplete windows are listed
-in the errors TSV. The cDNA FASTAs are read from
+in the errors TSV. In the full-transcript FASTA, the annotated CDS is uppercase
+and the 5′ and 3′ UTRs are lowercase. A transcript with missing or invalid CDS
+coordinates is kept entirely lowercase. The cDNA FASTAs are read from
 `data/large_files/ensembl/cdna/`.
 
 ```sh
