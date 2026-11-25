@@ -20,6 +20,9 @@ local structure and initiation, and associations with translation efficiency.
 
 ## Development practices
 
+- Before editing any files, ask the user one or more task-specific clarifying
+  questions and wait for their response. Do not begin file edits until they
+  respond.
 - Keep Python readable and modular; use clear names, small functions, and
   comments for non-obvious scientific choices. Follow existing project style.
 - Add dependencies to the relevant environment file only when needed and
