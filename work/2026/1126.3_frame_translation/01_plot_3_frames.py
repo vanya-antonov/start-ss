@@ -1,306 +1,289 @@
 #!/usr/bin/env python3
-"""Plot transcript-level CDS annotations and translations in three frames."""
+"""Plot one transcript, its annotated CDS, and start/stop codons in three frames."""
 
 from __future__ import annotations
 
 import argparse
-import csv
-from dataclasses import dataclass
+from collections import Counter
 from pathlib import Path
-from typing import Iterator
+from typing import Sequence
 
 import plotly.graph_objects as go
 
 
-ANNOTATION_DIR = Path("data/large_files/ensembl/gtf")
-FRAME_COLORS = ("#e53935", "#2e9d50", "#2878d0")
-START_CODONS = {"ATG"}
-STOP_CODONS = {"TAA", "TAG", "TGA"}
-CODON_TABLE = {
-    "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L",
-    "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
-    "TAT": "Y", "TAC": "Y", "TAA": "*", "TAG": "*",
-    "TGT": "C", "TGC": "C", "TGA": "*", "TGG": "W",
-    "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-    "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-    "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
-    "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
-    "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M",
-    "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-    "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-    "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
-    "GTT": "V", "GTC": "V", "GTA": "V", "GTG": "V",
-    "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
-    "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
-    "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G",
+NUCLEOTIDE_COLORS = {
+    "A": "#F8766D",
+    "C": "#00BA38",
+    "G": "#619CFF",
+    "T": "#619CFF",
 }
-
-
-@dataclass
-class Transcript:
-    label: str
-    transcript_id: str
-    sequence: str
-    cds_start: int | None
-    cds_end: int | None
+FRAME_COLORS = ("#F8766D", "#00BA38", "#619CFF")
+FRAME_NAMES = ("Frame 0", "Frame +1", "Frame +2")
+FRAME_BOUNDS = ((2, 3), (1, 2), (0, 1))
+START_CODON = "ATG"
+STOP_CODONS = {"TAA", "TAG", "TGA"}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Create an interactive Plotly HTML page with an annotated CDS track "
-            "and translations in three transcript-based reading frames."
+            "Create a standalone Plotly HTML visualization of one transcript, "
+            "its annotated CDS, and start/stop codons in three reading frames."
         )
     )
-    parser.add_argument("fasta", type=Path, help="Input transcript FASTA file")
-    parser.add_argument(
-        "--annotations-dir",
-        type=Path,
-        default=ANNOTATION_DIR,
-        help=f"Directory containing release 116 canonical transcript TSVs (default: {ANNOTATION_DIR})",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        help="Output HTML path (default: 01_<species>_3_frames.html beside the FASTA)",
-    )
+    parser.add_argument("--fasta", required=True, type=Path, help="FASTA file containing one transcript")
+    parser.add_argument("--cds_start", required=True, type=int, help="Annotated CDS start (1-based, inclusive)")
+    parser.add_argument("--cds_end", required=True, type=int, help="Annotated CDS end (1-based, inclusive)")
+    parser.add_argument("--output", required=True, type=Path, help="Output standalone HTML file")
     return parser.parse_args()
 
 
-def iter_fasta(path: Path) -> Iterator[tuple[str, str]]:
-    """Yield FASTA identifiers and sequences, reporting large-file progress."""
-    header: str | None = None
+def read_fasta(fasta_path: Path) -> tuple[str, str]:
+    """Read exactly one FASTA record and return its header and sequence."""
+    if not fasta_path.is_file():
+        raise FileNotFoundError(f"FASTA file does not exist: {fasta_path}")
+
+    transcript_id: str | None = None
     sequence_parts: list[str] = []
-    line_count = 0
     record_count = 0
-    print(f"Reading transcript FASTA: {path}")
-    with path.open(encoding="utf-8") as fasta_file:
+    line_count = 0
+    print(f"Reading FASTA: {fasta_path}")
+    with fasta_path.open(encoding="utf-8") as fasta_file:
         for line_count, line in enumerate(fasta_file, start=1):
             line = line.strip()
             if not line:
                 continue
             if line.startswith(">"):
-                if header is not None:
-                    record_count += 1
-                    yield header, "".join(sequence_parts)
-                header = line[1:].split(maxsplit=1)[0]
-                sequence_parts = []
-            elif header is None:
-                raise ValueError(f"Sequence data found before the first FASTA header at line {line_count}.")
+                record_count += 1
+                if record_count > 1:
+                    raise ValueError("Input FASTA must contain exactly one transcript record.")
+                header = line[1:].strip()
+                transcript_id = header.split(maxsplit=1)[0].split("|")[-1]
+                if not transcript_id:
+                    raise ValueError(f"FASTA header is empty at line {line_count}.")
+            elif transcript_id is None:
+                raise ValueError(f"Sequence data found before the FASTA header at line {line_count}.")
             else:
-                sequence_parts.append(line)
+                sequence_parts.append("".join(line.split()))
             if line_count % 100_000 == 0:
-                print(f"  Read {line_count:,} lines; {record_count:,} transcript records completed")
-    if header is not None:
-        record_count += 1
-        yield header, "".join(sequence_parts)
-    print(f"  Loaded {record_count:,} transcript records")
+                print(f"  Read {line_count:,} FASTA lines")
+
+    if transcript_id is None:
+        raise ValueError(f"No FASTA record found in {fasta_path}.")
+    sequence = "".join(sequence_parts).upper()
+    if not sequence:
+        raise ValueError(f"FASTA record {transcript_id!r} has an empty sequence.")
+    print(f"  Loaded {len(sequence):,} nucleotides for {transcript_id}")
+    return transcript_id, sequence
 
 
-def read_annotations(directory: Path) -> dict[str, tuple[int | None, int | None]]:
-    """Load transcript-relative CDS coordinates from release 116 TSV files."""
-    annotation_files = sorted(directory.glob("*.116.canonical_transcripts.tsv"))
-    if not annotation_files:
-        raise FileNotFoundError(f"No *.116.canonical_transcripts.tsv files found in {directory}")
-
-    annotations: dict[str, tuple[int | None, int | None]] = {}
-    print(f"Reading CDS coordinates from {len(annotation_files):,} annotation TSV files in {directory}")
-    for path in annotation_files:
-        print(f"  Reading {path}")
-        with path.open(newline="", encoding="utf-8") as tsv_file:
-            reader = csv.DictReader(tsv_file, delimiter="\t")
-            required = {"transcript_id", "cds_start", "cds_end"}
-            missing = required.difference(reader.fieldnames or [])
-            if missing:
-                raise ValueError(f"{path} is missing required columns: {', '.join(sorted(missing))}")
-            row_count = 0
-            for row_count, row in enumerate(reader, start=1):
-                transcript_id = row["transcript_id"].strip()
-                if transcript_id:
-                    annotations[transcript_id] = (
-                        parse_coordinate(row.get("cds_start")),
-                        parse_coordinate(row.get("cds_end")),
-                    )
-                if row_count % 100_000 == 0:
-                    print(f"    Read {row_count:,} annotation rows from {path.name}")
-    print(f"  Indexed {len(annotations):,} transcript annotations")
-    return annotations
-
-
-def parse_coordinate(value: str | None) -> int | None:
-    if value is None or value.strip() in {"", "-"}:
-        return None
-    try:
-        coordinate = int(value)
-    except ValueError:
-        return None
-    return coordinate if coordinate > 0 else None
-
-
-def parse_fasta_id(header: str) -> tuple[str, str]:
-    """Return a display label and the transcript ID from species|transcript IDs."""
-    if "|" in header:
-        species_name, transcript_id = header.split("|", 1)
-        return f"{species_name}|{transcript_id}", transcript_id
-    return header, header
-
-
-def make_transcripts(
-    fasta_path: Path,
-    annotations: dict[str, tuple[int | None, int | None]],
-) -> list[Transcript]:
-    transcripts: list[Transcript] = []
-    matched = 0
-    for header, sequence in iter_fasta(fasta_path):
-        label, transcript_id = parse_fasta_id(header)
-        cds_start, cds_end = annotations.get(transcript_id, (None, None))
-        if cds_start is not None and cds_end is not None:
-            matched += 1
-        transcripts.append(
-            Transcript(label, transcript_id, sequence.upper().replace("U", "T"), cds_start, cds_end)
+def validate_input(
+    sequence: str,
+    cds_start: int,
+    cds_end: int,
+) -> tuple[int, int]:
+    """Validate 1-based inclusive CDS coordinates and return length and frame."""
+    sequence_length = len(sequence)
+    if cds_start < 1 or cds_end < 1:
+        raise ValueError("CDS coordinates must be positive 1-based positions.")
+    if cds_start > cds_end:
+        raise ValueError("CDS start must be less than or equal to CDS end.")
+    if cds_end > sequence_length:
+        raise ValueError(
+            f"CDS end ({cds_end}) exceeds transcript length ({sequence_length})."
         )
-    print(f"  Matched CDS coordinates for {matched:,} of {len(transcripts):,} transcripts")
-    return transcripts
+    cds_length = cds_end - cds_start + 1
+    cds_frame = (cds_start - 1) % 3
+    return cds_length, cds_frame
 
 
-def add_transcript_traces(
-    figure: go.Figure,
-    transcript: Transcript,
-    transcript_index: int,
-    first_transcript: bool,
-) -> None:
-    """Add a CDS track and three colored translation tracks for one transcript."""
-    sequence_length = len(transcript.sequence)
-    valid_cds = (
-        transcript.cds_start is not None
-        and transcript.cds_end is not None
-        and transcript.cds_start <= transcript.cds_end <= sequence_length
-    )
-    visibility = transcript_index == 0
-    if valid_cds:
-        cds_start = transcript.cds_start
-        cds_end = transcript.cds_end
-        assert cds_start is not None and cds_end is not None
-        figure.add_trace(go.Scatter(
-            x=[cds_start, cds_end], y=[3, 3], mode="lines+markers",
-            line=dict(color="#6b7280", width=14),
-            marker=dict(color="#374151", size=7),
-            name="Annotated CDS", legendgroup="cds", showlegend=first_transcript,
-            visible=visibility,
-            customdata=[[transcript.label, cds_start, cds_end], [transcript.label, cds_start, cds_end]],
-            hovertemplate=("%{customdata[0]}<br>Annotated CDS: nt %{customdata[1]}–%{customdata[2]}"
-                           "<extra></extra>"),
-        ))
-    else:
-        print(f"  Warning: CDS coordinates missing or invalid for {transcript.label}; CDS track omitted")
+def identify_codons(sequence: str) -> list[list[tuple[int, str, str]]]:
+    """Find start and stop codons independently in each full-transcript frame.
 
+    Each result item is (1-based codon-start position, codon sequence, type).
+    """
+    codons_by_frame: list[list[tuple[int, str, str]]] = []
     for frame in range(3):
-        codons = [
-            (start, transcript.sequence[start : start + 3])
-            for start in range(frame, sequence_length - 2, 3)
-        ]
-        x_values = [start + 2 for start, _ in codons]
-        amino_acids = [CODON_TABLE.get(codon, "X") for _, codon in codons]
-        hover = [
-            f"{transcript.label}<br>Frame {frame:+d}<br>nt {start + 1}–{start + 3}: {codon}"
-            f"<br>Amino acid: {CODON_TABLE.get(codon, 'X')}"
-            for start, codon in codons
-        ]
-        figure.add_trace(go.Scatter(
-            x=x_values, y=[2 - frame] * len(codons), mode="markers+text",
-            marker=dict(color=FRAME_COLORS[frame], size=18, symbol="square"),
-            text=amino_acids, textposition="middle center",
-            textfont=dict(color="white", size=9), customdata=hover,
-            hovertemplate="%{customdata}<extra></extra>",
-            name=f"Frame {frame}", legendgroup=f"frame{frame}",
-            showlegend=first_transcript, visible=visibility,
-        ))
+        frame_codons: list[tuple[int, str, str]] = []
+        for start_index in range(frame, len(sequence) - 2, 3):
+            codon = sequence[start_index : start_index + 3]
+            if codon == START_CODON:
+                frame_codons.append((start_index + 1, codon, "Start"))
+            elif codon in STOP_CODONS:
+                frame_codons.append((start_index + 1, codon, "Stop"))
+        codons_by_frame.append(frame_codons)
+        start_count = sum(kind == "Start" for _, _, kind in frame_codons)
+        stop_count = sum(kind == "Stop" for _, _, kind in frame_codons)
+        print(
+            f"  {FRAME_NAMES[frame]}: {start_count:,} start codons, "
+            f"{stop_count:,} stop codons"
+        )
+    return codons_by_frame
 
-        start_codons = [(start + 2, codon) for start, codon in codons if codon in START_CODONS]
-        stop_codons = [(start + 2, codon) for start, codon in codons if codon in STOP_CODONS]
-        for codon_type, matches, color, symbol in (
-            ("Start", start_codons, "#ffffff", "triangle-up"),
-            ("Stop", stop_codons, "#111827", "x"),
-        ):
-            if not matches:
-                continue
+
+def create_figure(
+    transcript_id: str,
+    sequence: str,
+    cds_start: int,
+    cds_end: int,
+    cds_frame: int,
+    codons_by_frame: Sequence[Sequence[tuple[int, str, str]]],
+) -> go.Figure:
+    """Create the nucleotide, CDS, and three reading-frame Plotly tracks."""
+    figure = go.Figure()
+    sequence_length = len(sequence)
+    positions = list(range(1, sequence_length + 1))
+
+    # Place one hoverable letter at each transcript nucleotide position.
+    figure.add_trace(go.Scatter(
+        x=positions,
+        y=[4.1] * sequence_length,
+        text=list(sequence),
+        mode="text",
+        textfont=dict(
+            color=[NUCLEOTIDE_COLORS.get(base, "#777777") for base in sequence],
+            size=9,
+        ),
+        customdata=positions,
+        hovertemplate="Position: %{customdata} nt<br>Nucleotide: %{text}<extra></extra>",
+        showlegend=False,
+    ))
+
+    # Draw the three frame bands and the annotated CDS rectangle.
+    for frame, (y_bottom, y_top) in enumerate(FRAME_BOUNDS):
+        figure.add_shape(
+            type="rect",
+            x0=1,
+            x1=sequence_length,
+            y0=y_bottom,
+            y1=y_top,
+            fillcolor=FRAME_COLORS[frame],
+            opacity=0.25,
+            line=dict(width=0),
+            layer="below",
+        )
+
+    cds_color = FRAME_COLORS[cds_frame]
+    figure.add_shape(
+        type="rect",
+        x0=cds_start,
+        x1=cds_end,
+        y0=3.05,
+        y1=3.75,
+        fillcolor=cds_color,
+        line=dict(color=cds_color, width=1),
+        layer="below",
+    )
+    figure.add_trace(go.Scatter(
+        x=[(cds_start + cds_end) / 2],
+        y=[3.4],
+        text=[transcript_id],
+        mode="text",
+        textfont=dict(color="black", size=11),
+        hoverinfo="skip",
+        showlegend=False,
+    ))
+
+    # Add visible vertical codon markers and transparent hover targets.
+    for frame, frame_codons in enumerate(codons_by_frame):
+        y_bottom, y_top = FRAME_BOUNDS[frame]
+        hover_positions: list[int] = []
+        hover_text: list[str] = []
+        for position, codon, codon_type in frame_codons:
+            marker_color = "white" if codon_type == "Start" else "black"
+            figure.add_shape(
+                type="line",
+                x0=position,
+                x1=position,
+                y0=y_bottom,
+                y1=y_top,
+                line=dict(color=marker_color, width=2),
+                layer="above",
+            )
+            hover_positions.append(position)
+            hover_text.append(
+                f"Position: {position} nt<br>Codon: {codon}<br>"
+                f"Type: {codon_type}<br>Frame: {FRAME_NAMES[frame]}"
+            )
+
+        if hover_positions:
             figure.add_trace(go.Scatter(
-                x=[position for position, _ in matches], y=[2 - frame] * len(matches),
+                x=hover_positions,
+                y=[(y_bottom + y_top) / 2] * len(hover_positions),
                 mode="markers",
-                marker=dict(color=color, symbol=symbol, size=13, line=dict(color="#111827", width=1)),
-                customdata=[
-                    f"{transcript.label}<br>Frame {frame}<br>{codon_type} codon {codon} at nt {position - 1}–{position + 1}"
-                    for position, codon in matches
-                ],
-                hovertemplate="%{customdata}<extra></extra>",
-                name=f"{codon_type} codon", legendgroup=codon_type.lower(),
-                showlegend=first_transcript and frame == 0, visible=visibility,
+                marker=dict(color="rgba(0,0,0,0.01)", size=12),
+                text=hover_text,
+                hovertemplate="%{text}<extra></extra>",
+                showlegend=False,
             ))
 
-
-def build_figure(transcripts: list[Transcript]) -> go.Figure:
-    figure = go.Figure()
-    trace_ranges: list[tuple[int, int]] = []
-    for transcript_index, transcript in enumerate(transcripts):
-        print(f"Preparing plot {transcript_index + 1:,}/{len(transcripts):,}: {transcript.label}")
-        first_trace = len(figure.data)
-        add_transcript_traces(figure, transcript, transcript_index, transcript_index == 0)
-        trace_ranges.append((first_trace, len(figure.data)))
-
-    buttons = []
-    for selected_index, transcript in enumerate(transcripts):
-        first_trace, last_trace = trace_ranges[selected_index]
-        visible = [
-            first_trace <= trace_index < last_trace
-            for trace_index in range(len(figure.data))
-        ]
-        buttons.append({
-            "label": transcript.label,
-            "method": "update",
-            "args": [
-                {"visible": visible},
-                {"title": f"{transcript.label} — CDS and three-frame translation",
-                 "xaxis.range": [0, len(transcript.sequence) + 1]},
-            ],
-        })
-
-    first = transcripts[0]
     figure.update_layout(
-        title=f"{first.label} — CDS and three-frame translation",
-        xaxis=dict(title="Transcript nucleotide position (1-based)", range=[0, len(first.sequence) + 1],
-                   showgrid=True, dtick=100),
-        yaxis=dict(
-            tickmode="array", tickvals=[3, 2, 1, 0],
-            ticktext=["Annotated CDS", "Frame 0", "Frame +1", "Frame +2"],
-            range=[-0.6, 3.6], fixedrange=True,
+        width=1200,
+        height=200,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=20, r=20, t=10, b=45),
+        xaxis=dict(
+            range=[1, sequence_length],
+            title="position [nt]",
+            showgrid=False,
+            zeroline=False,
+            ticks="outside",
+            showline=False,
         ),
-        updatemenus=[dict(
-            buttons=buttons, direction="down", showactive=True,
-            x=1, xanchor="right", y=1.14, yanchor="top",
-        )],
-        height=480,
+        yaxis=dict(
+            range=[-0.1, 4.5],
+            visible=False,
+            fixedrange=True,
+        ),
+        showlegend=False,
         hovermode="closest",
-        margin=dict(l=110, r=30, t=120, b=70),
-        legend=dict(orientation="h", y=-0.2),
     )
     return figure
 
 
+def save_html(figure: go.Figure, output_path: Path) -> None:
+    """Write a standalone HTML file, creating its parent directory if needed."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Writing standalone HTML: {output_path}")
+    figure.write_html(output_path, include_plotlyjs=True, full_html=True)
+
+
 def main() -> None:
-    args = parse_args()
-    if not args.fasta.is_file():
-        raise FileNotFoundError(f"Input FASTA does not exist: {args.fasta}")
-    annotations = read_annotations(args.annotations_dir)
-    transcripts = make_transcripts(args.fasta, annotations)
-    if not transcripts:
-        raise ValueError(f"No FASTA records found in {args.fasta}")
-    fasta_stem = args.fasta.stem.removeprefix("00_").removesuffix("_transcripts")
-    output = args.output or args.fasta.with_name(f"01_{fasta_stem}_3_frames.html")
-    output.parent.mkdir(parents=True, exist_ok=True)
-    figure = build_figure(transcripts)
-    print(f"Writing interactive Plotly HTML: {output}")
-    figure.write_html(output, include_plotlyjs=True, full_html=True)
-    print(f"Wrote plot for {len(transcripts):,} transcripts to {output}")
+    arguments = parse_args()
+    transcript_id, sequence = read_fasta(arguments.fasta)
+    cds_length, cds_frame = validate_input(sequence, arguments.cds_start, arguments.cds_end)
+    print(
+        f"Validated CDS: {arguments.cds_start}–{arguments.cds_end} nt "
+        f"({cds_length:,} nt), Frame +{cds_frame}"
+    )
+    codons_by_frame = identify_codons(sequence)
+    figure = create_figure(
+        transcript_id,
+        sequence,
+        arguments.cds_start,
+        arguments.cds_end,
+        cds_frame,
+        codons_by_frame,
+    )
+    save_html(figure, arguments.output)
+
+    counts = [
+        Counter(codon_type for _, _, codon_type in frame_codons)
+        for frame_codons in codons_by_frame
+    ]
+    print("Summary:")
+    print(f"  Transcript ID: {transcript_id}")
+    print(f"  Sequence length: {len(sequence):,} nt")
+    print(f"  CDS coordinates: {arguments.cds_start}–{arguments.cds_end} nt")
+    print(f"  CDS length: {cds_length:,} nt")
+    print(f"  CDS reading frame: Frame +{cds_frame}")
+    for frame, frame_counts in enumerate(counts):
+        print(
+            f"  {FRAME_NAMES[frame]}: {frame_counts['Start']:,} start, "
+            f"{frame_counts['Stop']:,} stop codons"
+        )
+    print(f"  Output HTML: {arguments.output}")
 
 
 if __name__ == "__main__":
