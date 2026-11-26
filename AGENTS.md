@@ -15,7 +15,7 @@ local structure and initiation, and associations with translation efficiency.
   directories unless the task explicitly calls for it.
 - README files under `work/` must be concise and include the following sections:
   - **Introduction** — a brief description of the analysis and its objective.
-  - **Data** *(optional)* — document the required downloads and provide commands to copy small files (under 1 MB) or create symlinks to files produced by earlier dated experiments.
+  - **Data** *(optional)* — keep this section short. Use a concise command block to show required downloads, copy small files (under 1 MB), or create symlinks to files produced by earlier dated experiments; avoid prose or file lists that repeat the commands.
   - **Commands** — include the command to activate the proper environment first, followed by the commands needed to run the analysis. If scripts are present, create a separate subsection for each script, numbered sequentially as `Step 1`, `Step 2`, etc., with one or two explanatory lines. If no script commands are available yet, the section may contain only the environment activation command.
 
 ## Development practices
