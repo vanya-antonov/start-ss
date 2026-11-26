@@ -16,15 +16,11 @@ conda activate start-ss-scripts
 
 ### Step 1. Plot three-frame translations
 
-Generate an interactive HTML plot with the annotated CDS and three transcript-based reading frames. CDS coordinates are 1-based and inclusive:
+Generate an interactive HTML plot with the annotated CDS and three transcript-based reading frames. CDS coordinates are looked up from the canonical transcript TSVs.
 
 ```sh
-
-
 python work/2026/1126.3_frame_translation/01_plot_3_frames.py \
   --fasta work/2026/1126.3_frame_translation/GABARAP_human.fasta \
-  --cds_start 120 \
-  --cds_end 470 \
   --output work/2026/1126.3_frame_translation/GABARAP_human.html
 ```
 

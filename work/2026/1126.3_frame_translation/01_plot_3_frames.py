@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from collections import Counter
+from html import escape as html_escape
 from pathlib import Path
+import sys
 from typing import Sequence
 
 import plotly.graph_objects as go
@@ -32,8 +35,8 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument("--fasta", required=True, type=Path, help="FASTA file containing one transcript")
-    parser.add_argument("--cds_start", required=True, type=int, help="Annotated CDS start (1-based, inclusive)")
-    parser.add_argument("--cds_end", required=True, type=int, help="Annotated CDS end (1-based, inclusive)")
+    parser.add_argument("--cds_start", type=int, help="Annotated CDS start (1-based, inclusive)")
+    parser.add_argument("--cds_end", type=int, help="Annotated CDS end (1-based, inclusive)")
     parser.add_argument("--output", required=True, type=Path, help="Output standalone HTML file")
     return parser.parse_args()
 
@@ -96,6 +99,47 @@ def validate_input(
     return cds_length, cds_frame
 
 
+def find_cds_coordinates(transcript_id: str) -> tuple[int, int] | None:
+    """Search canonical transcript TSVs for this transcript's CDS interval."""
+    annotation_dir = Path("data/large_files/ensembl/gtf")
+    annotation_files = sorted(annotation_dir.glob("*.canonical_transcripts.tsv"))
+    if not annotation_files:
+        print(
+            f"Error: no *.canonical_transcripts.tsv files found in {annotation_dir}.",
+            file=sys.stderr,
+        )
+        return None
+
+    print(f"Looking up CDS coordinates for {transcript_id} in {len(annotation_files):,} annotation TSV files")
+    for annotation_path in annotation_files:
+        print(f"  Searching {annotation_path}")
+        with annotation_path.open(newline="", encoding="utf-8") as annotation_file:
+            reader = csv.DictReader(annotation_file, delimiter="\t")
+            required = {"transcript_id", "cds_start", "cds_end"}
+            missing_columns = required.difference(reader.fieldnames or [])
+            if missing_columns:
+                print(
+                    f"Error: {annotation_path} is missing columns: {', '.join(sorted(missing_columns))}.",
+                    file=sys.stderr,
+                )
+                continue
+            for row_number, row in enumerate(reader, start=1):
+                if row_number % 100_000 == 0:
+                    print(f"    Read {row_number:,} rows from {annotation_path.name}")
+                if row["transcript_id"].strip() != transcript_id:
+                    continue
+                try:
+                    start = int(row["cds_start"])
+                    end = int(row["cds_end"])
+                except (TypeError, ValueError):
+                    return None
+                if start <= 0 or end <= 0:
+                    return None
+                print(f"  Found CDS coordinates {start}–{end} in {annotation_path.name}")
+                return start, end
+    return None
+
+
 def identify_codons(sequence: str) -> list[list[tuple[int, str, str]]]:
     """Find start and stop codons independently in each full-transcript frame.
 
@@ -121,11 +165,11 @@ def identify_codons(sequence: str) -> list[list[tuple[int, str, str]]]:
 
 
 def create_figure(
-    transcript_id: str,
+    fasta_header: str,
     sequence: str,
-    cds_start: int,
-    cds_end: int,
-    cds_frame: int,
+    cds_start: int | None,
+    cds_end: int | None,
+    cds_frame: int | None,
     codons_by_frame: Sequence[Sequence[tuple[int, str, str]]],
 ) -> go.Figure:
     """Create the nucleotide, CDS, and three reading-frame Plotly tracks."""
@@ -161,26 +205,27 @@ def create_figure(
             layer="below",
         )
 
-    cds_color = FRAME_COLORS[cds_frame]
-    figure.add_shape(
-        type="rect",
-        x0=cds_start,
-        x1=cds_end,
-        y0=3.05,
-        y1=3.75,
-        fillcolor=cds_color,
-        line=dict(color=cds_color, width=1),
-        layer="below",
-    )
-    figure.add_trace(go.Scatter(
-        x=[(cds_start + cds_end) / 2],
-        y=[3.4],
-        text=[transcript_id],
-        mode="text",
-        textfont=dict(color="black", size=11),
-        hoverinfo="skip",
-        showlegend=False,
-    ))
+    if cds_start is not None and cds_end is not None and cds_frame is not None:
+        cds_color = FRAME_COLORS[cds_frame]
+        figure.add_shape(
+            type="rect",
+            x0=cds_start,
+            x1=cds_end,
+            y0=3.05,
+            y1=3.75,
+            fillcolor=cds_color,
+            line=dict(color=cds_color, width=1),
+            layer="below",
+        )
+        figure.add_trace(go.Scatter(
+            x=[(cds_start + cds_end) / 2],
+            y=[3.4],
+            text=[fasta_header],
+            mode="text",
+            textfont=dict(color="black", size=11),
+            hoverinfo="skip",
+            showlegend=False,
+        ))
 
     # Add visible vertical codon markers and transparent hover targets.
     for frame, frame_codons in enumerate(codons_by_frame):
@@ -240,32 +285,78 @@ def create_figure(
     return figure
 
 
-def save_html(figure: go.Figure, output_path: Path) -> None:
-    """Write a standalone HTML file, creating its parent directory if needed."""
+def save_html(figure: go.Figure, fasta_header: str, output_path: Path) -> None:
+    """Write standalone HTML with the FASTA header above the embedded plot."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"Writing standalone HTML: {output_path}")
-    figure.write_html(output_path, include_plotlyjs=True, full_html=True)
+    plot_html = figure.to_html(include_plotlyjs=True, full_html=False)
+    safe_header = html_escape(fasta_header)
+    html_document = (
+        "<!doctype html>\n"
+        "<html><head><meta charset=\"utf-8\"></head><body>\n"
+        f"<h2>{safe_header}</h2>\n"
+        f"{plot_html}\n"
+        "</body></html>\n"
+    )
+    output_path.write_text(html_document, encoding="utf-8")
 
 
 def main() -> None:
     arguments = parse_args()
     fasta_header, sequence = read_fasta(arguments.fasta)
     transcript_id = fasta_header.split(maxsplit=1)[0].split("|")[-1]
-    cds_length, cds_frame = validate_input(sequence, arguments.cds_start, arguments.cds_end)
-    print(
-        f"Validated CDS: {arguments.cds_start}–{arguments.cds_end} nt "
-        f"({cds_length:,} nt), Frame +{cds_frame}"
-    )
+    cds_start = arguments.cds_start
+    cds_end = arguments.cds_end
+    cds_length: int | None = None
+    cds_frame: int | None = None
+
+    if (cds_start is None) != (cds_end is None):
+        print(
+            "Error: provide both --cds_start and --cds_end, or omit both; "
+            "continuing without an annotated CDS rectangle.",
+            file=sys.stderr,
+        )
+        cds_start = None
+        cds_end = None
+    elif cds_start is None and cds_end is None:
+        coordinates = find_cds_coordinates(transcript_id)
+        if coordinates is None:
+            print(
+                f"Error: CDS coordinates for {transcript_id} were not found; "
+                "continuing without an annotated CDS rectangle.",
+                file=sys.stderr,
+            )
+        else:
+            cds_start, cds_end = coordinates
+
+    if cds_start is not None and cds_end is not None:
+        try:
+            cds_length, cds_frame = validate_input(sequence, cds_start, cds_end)
+        except ValueError as error:
+            print(
+                f"Error: {error} Continuing without an annotated CDS rectangle.",
+                file=sys.stderr,
+            )
+            cds_start = None
+            cds_end = None
+            cds_length = None
+            cds_frame = None
+        else:
+            print(
+                f"Validated CDS: {cds_start}–{cds_end} nt "
+                f"({cds_length:,} nt), Frame +{cds_frame}"
+            )
+
     codons_by_frame = identify_codons(sequence)
     figure = create_figure(
         fasta_header,
         sequence,
-        arguments.cds_start,
-        arguments.cds_end,
+        cds_start,
+        cds_end,
         cds_frame,
         codons_by_frame,
     )
-    save_html(figure, arguments.output)
+    save_html(figure, fasta_header, arguments.output)
 
     counts = [
         Counter(codon_type for _, _, codon_type in frame_codons)
@@ -274,9 +365,12 @@ def main() -> None:
     print("Summary:")
     print(f"  Transcript ID: {transcript_id}")
     print(f"  Sequence length: {len(sequence):,} nt")
-    print(f"  CDS coordinates: {arguments.cds_start}–{arguments.cds_end} nt")
-    print(f"  CDS length: {cds_length:,} nt")
-    print(f"  CDS reading frame: Frame +{cds_frame}")
+    if cds_start is not None and cds_end is not None and cds_length is not None and cds_frame is not None:
+        print(f"  CDS coordinates: {cds_start}–{cds_end} nt")
+        print(f"  CDS length: {cds_length:,} nt")
+        print(f"  CDS reading frame: Frame +{cds_frame}")
+    else:
+        print("  CDS coordinates: unavailable; no annotated CDS rectangle")
     for frame, frame_counts in enumerate(counts):
         print(
             f"  {FRAME_NAMES[frame]}: {frame_counts['Start']:,} start, "
