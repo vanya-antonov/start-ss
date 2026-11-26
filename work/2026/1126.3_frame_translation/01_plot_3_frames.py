@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot one transcript, its annotated CDS, and start/stop codons in three frames."""
+"""Plot FASTA transcripts, annotated CDS regions, and codons in three frames."""
 
 from __future__ import annotations
 
@@ -30,25 +30,23 @@ STOP_CODONS = {"TAA", "TAG", "TGA"}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Create a standalone Plotly HTML visualization of one transcript, "
-            "its annotated CDS, and start/stop codons in three reading frames."
+            "Create a standalone Plotly HTML page with vertically stacked plots "
+            "for transcripts in a FASTA file."
         )
     )
-    parser.add_argument("--fasta", required=True, type=Path, help="FASTA file containing one transcript")
-    parser.add_argument("--cds_start", type=int, help="Annotated CDS start (1-based, inclusive)")
-    parser.add_argument("--cds_end", type=int, help="Annotated CDS end (1-based, inclusive)")
+    parser.add_argument("--fasta", required=True, type=Path, help="Input FASTA file with one or more transcripts")
     parser.add_argument("--output", required=True, type=Path, help="Output standalone HTML file")
     return parser.parse_args()
 
 
-def read_fasta(fasta_path: Path) -> tuple[str, str]:
-    """Read exactly one FASTA record and return its header and sequence."""
+def read_fasta(fasta_path: Path) -> list[tuple[str, str]]:
+    """Read all FASTA records and return each full header and sequence."""
     if not fasta_path.is_file():
         raise FileNotFoundError(f"FASTA file does not exist: {fasta_path}")
 
-    transcript_id: str | None = None
+    header: str | None = None
     sequence_parts: list[str] = []
-    record_count = 0
+    records: list[tuple[str, str]] = []
     line_count = 0
     print(f"Reading FASTA: {fasta_path}")
     with fasta_path.open(encoding="utf-8") as fasta_file:
@@ -57,26 +55,30 @@ def read_fasta(fasta_path: Path) -> tuple[str, str]:
             if not line:
                 continue
             if line.startswith(">"):
-                record_count += 1
-                if record_count > 1:
-                    raise ValueError("Input FASTA must contain exactly one transcript record.")
-                transcript_id = line[1:].strip()
-                if not transcript_id:
+                if header is not None:
+                    sequence = "".join(sequence_parts).upper()
+                    if not sequence:
+                        raise ValueError(f"FASTA record {header!r} has an empty sequence.")
+                    records.append((header, sequence))
+                header = line[1:].strip()
+                if not header:
                     raise ValueError(f"FASTA header is empty at line {line_count}.")
-            elif transcript_id is None:
+                sequence_parts = []
+            elif header is None:
                 raise ValueError(f"Sequence data found before the FASTA header at line {line_count}.")
             else:
                 sequence_parts.append("".join(line.split()))
             if line_count % 100_000 == 0:
                 print(f"  Read {line_count:,} FASTA lines")
 
-    if transcript_id is None:
+    if header is None:
         raise ValueError(f"No FASTA record found in {fasta_path}.")
     sequence = "".join(sequence_parts).upper()
     if not sequence:
-        raise ValueError(f"FASTA record {transcript_id!r} has an empty sequence.")
-    print(f"  Loaded {len(sequence):,} nucleotides for {transcript_id}")
-    return transcript_id, sequence
+        raise ValueError(f"FASTA record {header!r} has an empty sequence.")
+    records.append((header, sequence))
+    print(f"  Loaded {len(records):,} transcript records")
+    return records
 
 
 def validate_input(
@@ -99,8 +101,10 @@ def validate_input(
     return cds_length, cds_frame
 
 
-def find_cds_coordinates(transcript_id: str) -> tuple[int, int] | None:
-    """Search canonical transcript TSVs for this transcript's CDS interval."""
+def find_cds_coordinates(
+    transcript_ids: set[str],
+) -> dict[str, tuple[int, int] | None]:
+    """Search canonical transcript TSVs for the requested CDS intervals."""
     annotation_dir = Path("data/large_files/ensembl/gtf")
     annotation_files = sorted(annotation_dir.glob("*.canonical_transcripts.tsv"))
     if not annotation_files:
@@ -108,9 +112,13 @@ def find_cds_coordinates(transcript_id: str) -> tuple[int, int] | None:
             f"Error: no *.canonical_transcripts.tsv files found in {annotation_dir}.",
             file=sys.stderr,
         )
-        return None
+        return {}
 
-    print(f"Looking up CDS coordinates for {transcript_id} in {len(annotation_files):,} annotation TSV files")
+    print(
+        f"Looking up CDS coordinates for {len(transcript_ids):,} transcripts "
+        f"in {len(annotation_files):,} annotation TSV files"
+    )
+    coordinates: dict[str, tuple[int, int] | None] = {}
     for annotation_path in annotation_files:
         print(f"  Searching {annotation_path}")
         with annotation_path.open(newline="", encoding="utf-8") as annotation_file:
@@ -126,18 +134,25 @@ def find_cds_coordinates(transcript_id: str) -> tuple[int, int] | None:
             for row_number, row in enumerate(reader, start=1):
                 if row_number % 100_000 == 0:
                     print(f"    Read {row_number:,} rows from {annotation_path.name}")
-                if row["transcript_id"].strip() != transcript_id:
+                transcript_id = row["transcript_id"].strip()
+                if transcript_id not in transcript_ids or transcript_id in coordinates:
                     continue
                 try:
                     start = int(row["cds_start"])
                     end = int(row["cds_end"])
                 except (TypeError, ValueError):
-                    return None
+                    coordinates[transcript_id] = None
+                    continue
                 if start <= 0 or end <= 0:
-                    return None
-                print(f"  Found CDS coordinates {start}–{end} in {annotation_path.name}")
-                return start, end
-    return None
+                    coordinates[transcript_id] = None
+                    continue
+                coordinates[transcript_id] = (start, end)
+                print(f"  Found CDS coordinates {start}–{end} for {transcript_id} in {annotation_path.name}")
+
+        if len(coordinates) == len(transcript_ids):
+            break
+
+    return coordinates
 
 
 def identify_codons(sequence: str) -> list[list[tuple[int, str, str]]]:
@@ -285,98 +300,92 @@ def create_figure(
     return figure
 
 
-def save_html(figure: go.Figure, fasta_header: str, output_path: Path) -> None:
-    """Write standalone HTML with the FASTA header above the embedded plot."""
+def save_html(plots: Sequence[tuple[str, go.Figure]], output_path: Path) -> None:
+    """Write one standalone HTML page with a vertically stacked plot per record."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"Writing standalone HTML: {output_path}")
-    plot_html = figure.to_html(include_plotlyjs=True, full_html=False)
-    safe_header = html_escape(fasta_header)
-    html_document = (
-        "<!doctype html>\n"
-        "<html><head><meta charset=\"utf-8\"></head><body>\n"
-        f"<h2>{safe_header}</h2>\n"
-        f"{plot_html}\n"
-        "</body></html>\n"
-    )
+    sections: list[str] = []
+    for plot_index, (fasta_header, figure) in enumerate(plots):
+        plot_html = figure.to_html(include_plotlyjs=(plot_index == 0), full_html=False)
+        safe_header = html_escape(fasta_header)
+        sections.append(
+            f'<section style="margin: 0 0 32px 0;">\n'
+            f"<h2>{safe_header}</h2>\n{plot_html}\n</section>"
+        )
+    html_document = "\n".join((
+        "<!doctype html>",
+        "<html><head><meta charset=\"utf-8\"></head><body>",
+        *sections,
+        "</body></html>",
+        "",
+    ))
     output_path.write_text(html_document, encoding="utf-8")
 
 
 def main() -> None:
     arguments = parse_args()
-    fasta_header, sequence = read_fasta(arguments.fasta)
-    transcript_id = fasta_header.split(maxsplit=1)[0].split("|")[-1]
-    cds_start = arguments.cds_start
-    cds_end = arguments.cds_end
-    cds_length: int | None = None
-    cds_frame: int | None = None
+    records = read_fasta(arguments.fasta)
+    transcript_ids = {
+        header.split(maxsplit=1)[0].split("|")[-1]
+        for header, _ in records
+    }
+    cds_by_transcript = find_cds_coordinates(transcript_ids)
+    plots: list[tuple[str, go.Figure]] = []
 
-    if (cds_start is None) != (cds_end is None):
-        print(
-            "Error: provide both --cds_start and --cds_end, or omit both; "
-            "continuing without an annotated CDS rectangle.",
-            file=sys.stderr,
-        )
-        cds_start = None
-        cds_end = None
-    elif cds_start is None and cds_end is None:
-        coordinates = find_cds_coordinates(transcript_id)
+    for record_index, (fasta_header, sequence) in enumerate(records, start=1):
+        transcript_id = fasta_header.split(maxsplit=1)[0].split("|")[-1]
+        print(f"Processing transcript {record_index:,}/{len(records):,}: {transcript_id}")
+        coordinates = cds_by_transcript.get(transcript_id)
+        cds_start: int | None = None
+        cds_end: int | None = None
+        cds_length: int | None = None
+        cds_frame: int | None = None
+
         if coordinates is None:
             print(
-                f"Error: CDS coordinates for {transcript_id} were not found; "
-                "continuing without an annotated CDS rectangle.",
+                f"Error: CDS coordinates for {transcript_id} were not found or are incomplete; "
+                "plotting without an annotated CDS rectangle.",
                 file=sys.stderr,
             )
         else:
             cds_start, cds_end = coordinates
+            try:
+                cds_length, cds_frame = validate_input(sequence, cds_start, cds_end)
+            except ValueError as error:
+                print(
+                    f"Error: {error} Plotting without an annotated CDS rectangle.",
+                    file=sys.stderr,
+                )
+                cds_start = None
+                cds_end = None
+                cds_length = None
+                cds_frame = None
+            else:
+                print(
+                    f"  CDS {cds_start}–{cds_end} nt ({cds_length:,} nt), "
+                    f"Frame +{cds_frame}"
+                )
 
-    if cds_start is not None and cds_end is not None:
-        try:
-            cds_length, cds_frame = validate_input(sequence, cds_start, cds_end)
-        except ValueError as error:
-            print(
-                f"Error: {error} Continuing without an annotated CDS rectangle.",
-                file=sys.stderr,
-            )
-            cds_start = None
-            cds_end = None
-            cds_length = None
-            cds_frame = None
-        else:
-            print(
-                f"Validated CDS: {cds_start}–{cds_end} nt "
-                f"({cds_length:,} nt), Frame +{cds_frame}"
-            )
-
-    codons_by_frame = identify_codons(sequence)
-    figure = create_figure(
-        fasta_header,
-        sequence,
-        cds_start,
-        cds_end,
-        cds_frame,
-        codons_by_frame,
-    )
-    save_html(figure, fasta_header, arguments.output)
-
-    counts = [
-        Counter(codon_type for _, _, codon_type in frame_codons)
-        for frame_codons in codons_by_frame
-    ]
-    print("Summary:")
-    print(f"  Transcript ID: {transcript_id}")
-    print(f"  Sequence length: {len(sequence):,} nt")
-    if cds_start is not None and cds_end is not None and cds_length is not None and cds_frame is not None:
-        print(f"  CDS coordinates: {cds_start}–{cds_end} nt")
-        print(f"  CDS length: {cds_length:,} nt")
-        print(f"  CDS reading frame: Frame +{cds_frame}")
-    else:
-        print("  CDS coordinates: unavailable; no annotated CDS rectangle")
-    for frame, frame_counts in enumerate(counts):
-        print(
-            f"  {FRAME_NAMES[frame]}: {frame_counts['Start']:,} start, "
-            f"{frame_counts['Stop']:,} stop codons"
+        codons_by_frame = identify_codons(sequence)
+        figure = create_figure(
+            fasta_header,
+            sequence,
+            cds_start,
+            cds_end,
+            cds_frame,
+            codons_by_frame,
         )
-    print(f"  Output HTML: {arguments.output}")
+        plots.append((fasta_header, figure))
+
+        for frame, frame_codons in enumerate(codons_by_frame):
+            counts = Counter(codon_type for _, _, codon_type in frame_codons)
+            print(
+                f"  {FRAME_NAMES[frame]}: {counts['Start']:,} start, "
+                f"{counts['Stop']:,} stop codons"
+            )
+
+    save_html(plots, arguments.output)
+    print(f"Wrote {len(plots):,} transcript plots to {arguments.output}")
 
 
 if __name__ == "__main__":

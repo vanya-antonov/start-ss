@@ -16,12 +16,12 @@ conda activate start-ss-scripts
 
 ### Step 1. Plot three-frame translations
 
-Generate an interactive HTML plot with the annotated CDS and three transcript-based reading frames. CDS coordinates are looked up from the canonical transcript TSVs.
+Generate vertically stacked interactive plots for every transcript in the FASTA. CDS coordinates are looked up from the canonical transcript TSVs.
 
 ```sh
 python work/2026/1126.3_frame_translation/01_plot_3_frames.py \
-  --fasta work/2026/1126.3_frame_translation/GABARAP_human.fasta \
-  --output work/2026/1126.3_frame_translation/GABARAP_human.html
+  --fasta work/2026/1126.3_frame_translation/00_GABARAP_transcripts.fasta \
+  --output work/2026/1126.3_frame_translation/GABARAP_all_species.html
 ```
 
 The FASTA must contain one transcript record.
