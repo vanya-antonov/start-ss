@@ -24,4 +24,13 @@ python work/2026/1126.3_frame_translation/01_plot_3_frames.py \
   --output work/2026/1126.3_frame_translation/GABARAP_all_species.html
 ```
 
-The FASTA must contain one transcript record.
+### Step 2. Find the first two CDS candidates
+
+Search every transcript for its first two ATG codons and their first in-frame stop codons. Optionally translate complete CDS 2 candidates to protein FASTA.
+
+```sh
+python work/2026/1126.3_frame_translation/02_find_cds.py \
+  --fasta work/2026/1126.3_frame_translation/00_GABARAP_transcripts.fasta \
+  --output work/2026/1126.3_frame_translation/02_GABARAP_cds.tsv \
+  --cds_2_faa work/2026/1126.3_frame_translation/02_GABARAP_cds_2.faa
+```
