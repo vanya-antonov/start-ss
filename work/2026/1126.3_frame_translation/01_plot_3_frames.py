@@ -57,8 +57,7 @@ def read_fasta(fasta_path: Path) -> tuple[str, str]:
                 record_count += 1
                 if record_count > 1:
                     raise ValueError("Input FASTA must contain exactly one transcript record.")
-                header = line[1:].strip()
-                transcript_id = header.split(maxsplit=1)[0].split("|")[-1]
+                transcript_id = line[1:].strip()
                 if not transcript_id:
                     raise ValueError(f"FASTA header is empty at line {line_count}.")
             elif transcript_id is None:
@@ -250,7 +249,8 @@ def save_html(figure: go.Figure, output_path: Path) -> None:
 
 def main() -> None:
     arguments = parse_args()
-    transcript_id, sequence = read_fasta(arguments.fasta)
+    fasta_header, sequence = read_fasta(arguments.fasta)
+    transcript_id = fasta_header.split(maxsplit=1)[0].split("|")[-1]
     cds_length, cds_frame = validate_input(sequence, arguments.cds_start, arguments.cds_end)
     print(
         f"Validated CDS: {arguments.cds_start}–{arguments.cds_end} nt "
@@ -258,7 +258,7 @@ def main() -> None:
     )
     codons_by_frame = identify_codons(sequence)
     figure = create_figure(
-        transcript_id,
+        fasta_header,
         sequence,
         arguments.cds_start,
         arguments.cds_end,
