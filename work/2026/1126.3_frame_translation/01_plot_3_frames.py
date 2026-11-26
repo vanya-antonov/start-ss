@@ -158,7 +158,6 @@ def create_figure(
             y0=y_bottom,
             y1=y_top,
             fillcolor=FRAME_COLORS[frame],
-            opacity=0.25,
             line=dict(width=0),
             layer="below",
         )
